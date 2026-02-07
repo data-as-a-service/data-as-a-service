@@ -7,16 +7,16 @@ WORKDIR /src
 COPY ./src/ ./
 
 # Restore dependencies
-RUN dotnet restore ./servers/Web/Daas.Api/Daas.Api.csproj
-RUN dotnet restore ./servers/Web/Daas.Application/Daas.Application.csproj
-RUN dotnet restore ./servers/Web/Daas.Domain/Daas.Domain.csproj
-RUN dotnet restore ./servers/Web/Daas.Infrastructure/Daas.Infrastructure.csproj
+RUN dotnet restore /src/servers/Web/Daas.Api/Daas.Api.csproj
+RUN dotnet restore /src/servers/Web/Daas.Application/Daas.Application.csproj
+RUN dotnet restore /src/servers/Web/Daas.Domain/Daas.Domain.csproj
+RUN dotnet restore /src/servers/Web/Daas.Infrastructure/Daas.Infrastructure.csproj
 
 # Build and publish
-RUN dotnet publish ./servers/Web/Daas.Api/Daas.Api.csproj -c Release -o /app --no-restore
-RUN dotnet publish ./servers/Web/Daas.Application/Daas.Application.csproj -c Release -o /app --no-restore
-RUN dotnet publish ./servers/Web/Daas.Domain/Daas.Domain.csproj -c Release -o /app --no-restore
-RUN dotnet publish ./servers/Web/Daas.Infrastructure/Daas.Infrastructure.csproj -c Release -o /app --no-restore
+RUN dotnet publish /src/servers/Web/Daas.Api/Daas.Api.csproj -c Release -o /app --no-restore
+RUN dotnet publish /src/servers/Web/Daas.Application/Daas.Application.csproj -c Release -o /app --no-restore
+RUN dotnet publish /src/servers/Web/Daas.Domain/Daas.Domain.csproj -c Release -o /app --no-restore
+RUN dotnet publish /src/servers/Web/Daas.Infrastructure/Daas.Infrastructure.csproj -c Release -o /app --no-restore
 
 
 # ---------- RUNTIME STAGE (SLIM) ----------
