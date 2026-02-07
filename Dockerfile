@@ -8,10 +8,9 @@ RUN ls
 RUN pwd
 
 COPY ./src ./
+WORKDIR /src/servers
 RUN ls
 RUN pwd
-RUN cd servers
-RUN ls
 # # Restore dependencies
 # RUN dotnet restore ./data-as-a-service.sln
 
