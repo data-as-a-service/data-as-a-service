@@ -3,11 +3,11 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
 # Copy solution and project files
-COPY data-as-a-service.sln .
+COPY data-as-a-service.slnx .
 COPY ./src ./
 
 # Restore dependencies
-RUN dotnet restore data-as-a-service.sln
+RUN dotnet restore data-as-a-service.slnx
 
 # Build and publish
 RUN dotnet publish src/servers/Web/Daas.Api/Daas.Api.csproj -c Release -o /app --no-restore
