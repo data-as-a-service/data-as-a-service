@@ -7,10 +7,10 @@ WORKDIR /src
 COPY ./src/ ./
 
 # Restore dependencies
-RUN dotnet restore 
+RUN dotnet restore ./servers/Web/Daas.Api/Daas.Api.csproj
 
 # Build and publish
-RUN dotnet publish src/servers/Web/Daas.Api/Daas.Api.csproj -c Release -o /app --no-restore
+RUN dotnet publish ./servers/Web/Daas.Api/Daas.Api.csproj -c Release -o /app --no-restore
 
 
 # ---------- RUNTIME STAGE (SLIM) ----------
