@@ -7,6 +7,9 @@ COPY data-as-a-service.sln .
 RUN ls
 RUN pwd
 
+COPY ./src ./
+RUN ls
+RUN pwd
 # # Restore dependencies
 # RUN dotnet restore ./data-as-a-service.sln
 
