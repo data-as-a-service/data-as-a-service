@@ -1,5 +1,5 @@
 # ---------- BUILD STAGE ----------
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # Copy solution and project files
@@ -14,7 +14,7 @@ RUN dotnet publish ../servers/Web/Daas.Api/Daas.Api.csproj -c Release -o /app --
 
 
 # ---------- RUNTIME STAGE (SLIM) ----------
-FROM mcr.microsoft.com/dotnet/aspnet:8.0-alpine AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS runtime
 WORKDIR /app
 
 COPY --from=build /app .
