@@ -3,20 +3,14 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
 # Copy solution and project files
-# COPY data-as-a-service.sln .
+COPY data-as-a-service.sln .
 COPY ./src/ ./
 
 # Restore dependencies
-RUN dotnet restore /src/servers/Web/Daas.Api/Daas.Api.csproj
-RUN dotnet restore /src/servers/Web/Daas.Application/Daas.Application.csproj
-RUN dotnet restore /src/servers/Web/Daas.Domain/Daas.Domain.csproj
-RUN dotnet restore /src/servers/Web/Daas.Infrastructure/Daas.Infrastructure.csproj
+RUN dotnet restore ./data-as-a-service.sln
 
 # Build and publish
-RUN dotnet publish /src/servers/Web/Daas.Api/Daas.Api.csproj -c Release -o /app --no-restore
-RUN dotnet publish /src/servers/Web/Daas.Application/Daas.Application.csproj -c Release -o /app --no-restore
-RUN dotnet publish /src/servers/Web/Daas.Domain/Daas.Domain.csproj -c Release -o /app --no-restore
-RUN dotnet publish /src/servers/Web/Daas.Infrastructure/Daas.Infrastructure.csproj -c Release -o /app --no-restore
+RUN dotnet publish ./servers/Web/Daas.Api/Daas.Api.csproj -c Release -o /app --no-restore
 
 
 # ---------- RUNTIME STAGE (SLIM) ----------
