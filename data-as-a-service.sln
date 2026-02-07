@@ -2,9 +2,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "/src", "{827E0CD3-B72D-47B6-A68D-7590B98EB39B}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72D-47B6-A68D-7590B98EB39B}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "servers", "src/servers", "{CC80CF82-095A-9A70-E4AA-4F39E72E717A}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "servers", "servers", "{CC80CF82-095A-9A70-E4AA-4F39E72E717A}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Web", "Web", "{DDAF33F6-5FC5-E3C5-2727-524EB22D6C32}"
 EndProject
