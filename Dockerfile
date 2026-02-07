@@ -8,15 +8,15 @@ COPY ./src/ ./
 
 # Restore dependencies
 RUN dotnet restore ./servers/Web/Daas.Api/Daas.Api.csproj
-RUN dotnet restore ./servers/Web/Daas.Application/Daas.Api.csproj
-RUN dotnet restore ./servers/Web/Daas.Domain/Daas.Api.csproj
-RUN dotnet restore ./servers/Web/Daas.Infrastructure/Daas.Api.csproj
+RUN dotnet restore ./servers/Web/Daas.Application/Daas.Application.csproj
+RUN dotnet restore ./servers/Web/Daas.Domain/Daas.Domain.csproj
+RUN dotnet restore ./servers/Web/Daas.Infrastructure/Daas.Infrastructure.csproj
 
 # Build and publish
 RUN dotnet publish ./servers/Web/Daas.Api/Daas.Api.csproj -c Release -o /app --no-restore
-RUN dotnet publish ./servers/Web/Daas.Api/Daas.Application.csproj -c Release -o /app --no-restore
-RUN dotnet publish ./servers/Web/Daas.Api/Daas.Domain.csproj -c Release -o /app --no-restore
-RUN dotnet publish ./servers/Web/Daas.Api/Daas.Infrastructure.csproj -c Release -o /app --no-restore
+RUN dotnet publish ./servers/Web/Daas.Application/Daas.Application.csproj -c Release -o /app --no-restore
+RUN dotnet publish ./servers/Web/Daas.Domain/Daas.Domain.csproj -c Release -o /app --no-restore
+RUN dotnet publish ./servers/Web/Daas.Infrastructure/Daas.Infrastructure.csproj -c Release -o /app --no-restore
 
 
 # ---------- RUNTIME STAGE (SLIM) ----------
