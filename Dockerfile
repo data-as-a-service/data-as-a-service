@@ -11,6 +11,9 @@ COPY ./src ./
 WORKDIR /src/servers
 RUN ls
 RUN pwd
+WORKDIR /src/servers/Web/Daas.Api
+RUN dotnet restore
+RUN dotnet publish -c Release -o /app
 # # Restore dependencies
 # RUN dotnet restore ./data-as-a-service.sln
 
