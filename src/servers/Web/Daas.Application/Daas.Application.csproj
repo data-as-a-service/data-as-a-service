@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\DaaS.Domain\Daas.Domain.csproj" />
+    <ProjectReference Include="..\Daas.Domain\Daas.Domain.csproj" />
   </ItemGroup>
 
 	<ItemGroup>
