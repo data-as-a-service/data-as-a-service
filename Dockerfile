@@ -1,33 +1,25 @@
 # ---------- BUILD STAGE ----------
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
 # Copy solution and project files
 COPY data-as-a-service.sln .
-RUN ls
-RUN pwd
+COPY ./src .
 
-COPY ./src ./
-WORKDIR /src/servers
-RUN ls
-RUN pwd
-WORKDIR /src/servers/Web/Daas.Api
-RUN dotnet restore
-RUN dotnet publish -c Release -o /app
-# # Restore dependencies
-# RUN dotnet restore ./data-as-a-service.sln
+# Restore dependencies
+RUN dotnet ./restore data-as-a-service.sln
 
-# # Build and publish
-# RUN dotnet publish ../servers/Web/Daas.Api/Daas.Api.csproj -c Release -o /app --no-restore
+# Build and publish
+RUN dotnet publish src/servers/Web/Daas.Api/Daas.Api.csproj -c Release -o /app --no-restore
 
 
-# # ---------- RUNTIME STAGE (SLIM) ----------
-# FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS runtime
-# WORKDIR /app
+# ---------- RUNTIME STAGE (SLIM) ----------
+FROM mcr.microsoft.com/dotnet/aspnet:8.0-alpine AS runtime
+WORKDIR /app
 
-# COPY --from=build /app .
+COPY --from=build /app .
 
-# EXPOSE 5247
-# EXPOSE 7268
+EXPOSE 5247
+EXPOSE 7268
 
-# ENTRYPOINT ["dotnet", "Daas.Api.dll"]
+ENTRYPOINT ["dotnet", "Daas.Api.dll"]
