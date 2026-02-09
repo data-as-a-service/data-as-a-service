@@ -12,14 +12,14 @@ RUN dotnet restore ./data-as-a-service.sln
 # Build and publish
 RUN dotnet publish src/servers/Web/Daas.Api/Daas.Api.csproj -c Release -o /app --no-restore
 
-
-# ---------- RUNTIME STAGE (SLIM) ----------
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS runtime
-WORKDIR /app
-
-COPY --from=build /app .
-
-EXPOSE 5247
-EXPOSE 7268
-
 ENTRYPOINT ["dotnet", "Daas.Api.dll"]
+# # ---------- RUNTIME STAGE (SLIM) ----------
+# FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS runtime
+# WORKDIR /app
+
+# COPY --from=build /app .
+
+# EXPOSE 5247
+# EXPOSE 7268
+
+# ENTRYPOINT ["dotnet", "Daas.Api.dll"]
