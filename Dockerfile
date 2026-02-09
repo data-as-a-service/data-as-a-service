@@ -4,7 +4,7 @@ WORKDIR /src
 
 # Copy solution and project files
 COPY data-as-a-service.sln .
-COPY src/ ./
+COPY src ./src/
 
 # Restore dependencies
 RUN dotnet restore ./data-as-a-service.sln
