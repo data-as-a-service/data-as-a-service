@@ -7,7 +7,7 @@ COPY data-as-a-service.sln .
 COPY ./src .
 
 # Restore dependencies
-RUN dotnet ./restore data-as-a-service.sln
+RUN dotnet restore ./data-as-a-service.sln
 
 # Build and publish
 RUN dotnet publish src/servers/Web/Daas.Api/Daas.Api.csproj -c Release -o /app --no-restore
