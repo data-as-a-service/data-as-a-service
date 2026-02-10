@@ -21,9 +21,6 @@ jobs:
 
       - name: Build docker image
         run: docker build --no-cache -t daasservice:latest .
-
-      - name: verifying docker image build
-        run: docker images
       
       - name: Generating image tag
         run: echo "TAG=$(date +'%Y%m%d%H%M%S')" >> $GITHUB_ENV
@@ -41,3 +38,6 @@ jobs:
         run : |
           docker push sooraj2002/daas-application:latest
           docker push sooraj2002/daas-application:${{env.TAG}}
+
+      - name: listing the docker image
+        run: docker images
