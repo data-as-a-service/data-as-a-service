@@ -25,10 +25,10 @@ jobs:
         run: docker images
       
       - name: Retaging the image before pushing it to DockerHub
-        run: docker tag daasservice:latest sooraj2002/my-app-actions:v1
+        run: docker tag daasservice:latest sooraj2002/daas-application:v1
       
       - name: Docker login
-        run: echo "{$secrets.DOCKER_TOKEN}" | docker login -u "{secrets.DOCKER_USERNAME}" --password-stdin 
+        run: echo "${{ secrets.DOCKER_TOKEN }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
 
       - name: Pushing Docker image to the DockerHub
         run : docker push sooraj2002/my-app-actions:v1
