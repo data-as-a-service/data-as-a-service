@@ -26,7 +26,7 @@ jobs:
         run: docker images
       
       - name: Generating image tag
-        run: echo "TAG=$(date +'%Y%m%d%H%M%S')" >> GITHUB_ENV
+        run: echo "TAG=$(date +'%Y%m%d%H%M%S')" >> $GITHUB_ENV
 
     
       - name: Retaging the image before pushing it to DockerHub
