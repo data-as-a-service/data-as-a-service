@@ -1,0 +1,25 @@
+name: DAAS application pipeline
+run-name: ${{github.actor}} triggered DAAS application deployment
+
+on:
+  push: 
+    branches: 
+      - main
+      - feature/soorajsm-patch-1
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: testing echo
+        run: echo "success" 
+
+      - name: checkout code
+        uses: actions/checkout@v4
+
+      - name: Build docker image
+        run: docker build --no-cache -t daasservice:latest .
+
+      - name: verifying docker image build
+        run: docker images

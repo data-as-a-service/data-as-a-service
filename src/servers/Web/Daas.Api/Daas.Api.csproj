@@ -7,8 +7,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\DaaS.Application\Daas.Application.csproj" />
-    <ProjectReference Include="..\DaaS.Infrastructure\Daas.Infrastructure.csproj" />
+    <ProjectReference Include="..\Daas.Application\Daas.Application.csproj" />
+    <ProjectReference Include="..\Daas.Infrastructure\Daas.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>
