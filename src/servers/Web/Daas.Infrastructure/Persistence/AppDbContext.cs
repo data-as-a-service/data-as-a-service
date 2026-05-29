@@ -10,7 +10,9 @@ public class AppDbContext : DbContext, IAppDbContext
         : base(options)
     {
     }
+    public DbSet<Schema> Schemas => Set<Schema>();
 
+    public DbSet<FieldDefinition> FieldDefinitions => Set<FieldDefinition>();
     public DbSet<User> Users => Set<User>();
 
     IQueryable<User> IAppDbContext.Users => Users;
