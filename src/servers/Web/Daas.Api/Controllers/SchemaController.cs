@@ -53,4 +53,42 @@ public class SchemaController : ControllerBase
 
         return Ok(schema);
     }
+
+    [HttpGet("{id}/data/{howmany}")]
+    public IActionResult GenerateData(
+        Guid id,
+        int howmany)
+    {
+        var schema = _context.Schemas
+            .Include(x => x.Fields)
+            .FirstOrDefault(x => x.Id == id);
+
+        if (schema == null)
+        {
+            return NotFound();
+        }
+
+        var result = new List<object>();
+
+        for (int i = 0; i < howmany; i++)
+        {
+            var row =
+                new ExpandoObject()
+                as IDictionary<string, object>;
+
+            foreach (var field in schema.Fields)
+            {
+                var value =
+    factory
+        .Get((Daas.Application.Users.Queries.FieldType)field.FieldType)
+        .Generator();
+
+                row.Add(field.FieldName, value);
+            }
+
+            result.Add(row);
+        }
+
+        return Ok(result);
+    }
 }
