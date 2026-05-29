@@ -38,4 +38,19 @@ public class SchemaController : ControllerBase
             schema.Id
         });
     }
+
+    [HttpGet("{id}")]
+    public IActionResult GetSchema(Guid id)
+    {
+        var schema = _context.Schemas
+            .Include(x => x.Fields)
+            .FirstOrDefault(x => x.Id == id);
+
+        if (schema == null)
+        {
+            return NotFound();
+        }
+
+        return Ok(schema);
+    }
 }
