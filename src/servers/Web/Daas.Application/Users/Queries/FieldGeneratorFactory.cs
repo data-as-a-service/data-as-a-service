@@ -20,7 +20,7 @@ namespace Daas.Application.Users.Queries
             return type switch
             {
                 FieldType.Int => new IntGenerator(_random),
-                FieldType.String=> new StringGenerator(_random)
+                FieldType.String=> new StringGenerator(_random),
                 FieldType.Float=> new FloatGenerator(_random)
             };
         }
