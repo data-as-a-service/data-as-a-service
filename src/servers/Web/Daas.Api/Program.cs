@@ -84,7 +84,7 @@ var app = builder.Build();
 app.UseHttpsRedirection();
 app.MapControllers();
 
-# This ensures the database is created and migrations are applied on startup.
+// This ensures the database is created and migrations are applied on startup.
 
 using (var scope = app.Services.CreateScope())
 {
