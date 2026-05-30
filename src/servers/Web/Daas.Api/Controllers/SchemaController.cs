@@ -64,6 +64,25 @@ public class SchemaController : ControllerBase
         return Ok(schemas);
     }
 
+    [HttpDelete("{id}")]
+    public IActionResult DeleteSchema(Guid id)
+    {
+        var schema = _context.Schemas
+            .Include(x => x.Fields)
+            .FirstOrDefault(x => x.Id == id);
+
+        if (schema == null)
+        {
+            return NotFound();
+        }
+
+        _context.Schemas.Remove(schema);
+
+        _context.SaveChanges();
+
+        return NoContent();
+    }
+
     [HttpGet("{id}/data/{howmany}")]
     public IActionResult GenerateData(
         Guid id,
