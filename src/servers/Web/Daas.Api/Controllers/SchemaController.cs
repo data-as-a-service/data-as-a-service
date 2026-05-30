@@ -54,6 +54,16 @@ public class SchemaController : ControllerBase
         return Ok(schema);
     }
 
+    [HttpGet]
+    public IActionResult GetAllSchemas()
+    {
+        var schemas = _context.Schemas
+            .Include(x => x.Fields)
+            .ToList();
+
+        return Ok(schemas);
+    }
+
     [HttpGet("{id}/data/{howmany}")]
     public IActionResult GenerateData(
         Guid id,
