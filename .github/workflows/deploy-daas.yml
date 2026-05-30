@@ -1,42 +1,48 @@
 name: DAAS application pipeline
-run-name: ${{github.actor}} triggered DAAS application deployment
+run-name: ${{ github.actor }} triggered DAAS application deployment
 
 on:
-  push: 
-    branches: 
+  push:
+    branches:
       - main
-      - feature/soorajsm-patch-1
+      - feature/*
+      - Feature/*
   workflow_dispatch:
-
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: testing echo
-        run: echo "success" 
+        run: echo "success"
 
       - name: checkout code
         uses: actions/checkout@v4
 
       - name: Build docker image
         run: docker build --no-cache -t daasservice:latest .
-      
+
       - name: Generating image tag
         run: echo "TAG=$(date +'%Y%m%d%H%M%S')" >> $GITHUB_ENV
-    
+
       - name: Retaging the image before pushing it to DockerHub
         run: |
           docker tag daasservice:latest sooraj2002/daas-application:latest
-          docker tag daasservice:latest sooraj2002/daas-application:${{env.TAG}}
-      
-      - name: Docker login
-        run: echo "${{ secrets.DOCKER_TOKEN }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+          docker tag daasservice:latest sooraj2002/daas-application:${{ env.TAG }}
 
-      - name: Pushing Docker image to the DockerHub
-        run : |
+      - name: Docker login
+        if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+        run: |
+          echo "${{ secrets.DOCKER_TOKEN }}" | docker login \
+          -u "${{ secrets.DOCKER_USERNAME }}" \
+          --password-stdin
+
+      - name: Pushing Docker image to DockerHub
+        if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+        run: |
           docker push sooraj2002/daas-application:latest
-          docker push sooraj2002/daas-application:${{env.TAG}}
+          docker push sooraj2002/daas-application:${{ env.TAG }}
 
       - name: listing the docker image
         run: docker images
