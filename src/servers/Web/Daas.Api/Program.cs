@@ -55,7 +55,7 @@
 using Daas.Application;
 using Daas.Application.Users.Queries;
 using Daas.Infrastructure;
-using AppDbContext;
+// using AppDbContext;
 using Daas.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
