@@ -24,7 +24,8 @@ namespace Daas.Application.Users.Queries
                 FieldType.Float=> new FloatGenerator(_random),
                 FieldType.Character=> new CharacterGenerator(_random),
                 FieldType.Guid=> new GuidGenerator(),
-                FieldType.Date => new DateGenerator(_random)
+                FieldType.Date => new DateGenerator(_random),
+                FieldType.Double => new DoubleGenerator(_random)
             };
         }
 
