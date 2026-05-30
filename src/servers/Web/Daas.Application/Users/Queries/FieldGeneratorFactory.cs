@@ -21,7 +21,8 @@ namespace Daas.Application.Users.Queries
             {
                 FieldType.Int => new IntGenerator(_random),
                 FieldType.String=> new StringGenerator(_random),
-                FieldType.Float=> new FloatGenerator(_random)
+                FieldType.Float=> new FloatGenerator(_random),
+                FieldType.Character=> new CharacterGenerator(_random)
             };
         }
 
