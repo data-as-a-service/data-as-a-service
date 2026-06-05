@@ -31,7 +31,7 @@ public class MockController : ControllerBase
             return NotFound();
         }
 
-        int howmany = 10;
+        int howmany = 50;
 
         var result = new List<object>();
 
