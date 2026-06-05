@@ -46,9 +46,6 @@ function generateData(id) {
     alert(id);
 }
 
-function deleteSchema(id) {
-    alert(id);
-}
 
 async function deleteSchema(id) {
     await fetch(
