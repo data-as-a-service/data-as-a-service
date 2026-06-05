@@ -12,9 +12,12 @@ namespace Daas.Application.Users.Queries
         }
         public object Generator()
         {
-            byte randombyte = (byte) _random.Next(0, 256);
-            return Convert.ToString(randombyte , 2).PadLeft(8, '0');
-
+            byte randombyte = (byte) _random.Next(0, 2);
+            if(randombyte == 1)
+            {
+            return true;
+            }
+            return false;
         }
 
       }
