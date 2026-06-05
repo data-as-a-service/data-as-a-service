@@ -42,3 +42,10 @@
 }
 
 loadSchemas();
+function generateData(id) {
+    alert(id);
+}
+
+function deleteSchema(id) {
+    alert(id);
+}
