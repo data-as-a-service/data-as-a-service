@@ -59,3 +59,18 @@ async function deleteSchema(id) {
 
     loadSchemas();
 }
+
+async function generateData(id) {
+    const response =
+        await fetch(
+            `/api/schema/${id}/data/10`
+        );
+
+    const data =
+        await response.json();
+
+    document.getElementById(
+        "generatedData"
+    ).textContent =
+        JSON.stringify(data, null, 2);
+}
