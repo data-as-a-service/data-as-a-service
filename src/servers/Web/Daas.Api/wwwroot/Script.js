@@ -49,3 +49,13 @@ function generateData(id) {
 function deleteSchema(id) {
     alert(id);
 }
+
+async function deleteSchema(id) {
+    await fetch(
+        `/api/schema/${id}`,
+        {
+            method: 'DELETE'
+        });
+
+    loadSchemas();
+}
