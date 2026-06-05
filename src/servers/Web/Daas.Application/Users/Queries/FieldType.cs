@@ -6,7 +6,7 @@ namespace Daas.Application.Users.Queries
 {
     public enum FieldType
     {
-        Int,Float,Boolean,String,Character
+        Int,Float,Boolean,String,Character,Guid,Date,Double
         //"0" = Int,
         //Float,
         //Boolean,
