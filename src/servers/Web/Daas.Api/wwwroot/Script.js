@@ -42,9 +42,6 @@
 }
 
 loadSchemas();
-function generateData(id) {
-    alert(id);
-}
 
 
 async function deleteSchema(id) {
