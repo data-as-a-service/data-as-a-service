@@ -20,10 +20,36 @@
     </button>
 
     <hr>
+    <hr>
+
+    <h2>Create Schema</h2>
+
+    <input id="schemaName"
+           class="form-control mb-2"
+           placeholder="Schema Name">
+
+    <div id="fieldsContainer"></div>
+
+    <button class="btn btn-secondary mb-2"
+            onclick="addField()">
+
+        Add Field
+    </button>
+
+    <button class="btn btn-success mb-2"
+            onclick="createSchema()">
+
+        Create Schema
+    </button>
 
     <h2>Existing Schemas</h2>
 
     <div id="schemas"></div>
+    <hr>
+
+    <h2>Generated Data</h2>
+
+<pre id="generatedData"></pre>
 
     <script src="script.js"></script>
 
