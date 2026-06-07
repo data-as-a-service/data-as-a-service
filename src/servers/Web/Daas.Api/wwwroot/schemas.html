@@ -1,0 +1,31 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>Schemas</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css"
+          rel="stylesheet">
+</head>
+<body class="container mt-4">
+
+    <h2>Create Schema</h2>
+
+    <input id="schemaName"
+           class="form-control mb-2"
+           placeholder="Schema Name">
+
+    <button onclick="createSchema()"
+            class="btn btn-success">
+        Create
+    </button>
+
+    <hr>
+
+    <h2>Existing Schemas</h2>
+
+    <div id="schemas"></div>
+
+    <script src="script.js"></script>
+
+</body>
+</html>
