@@ -55,6 +55,8 @@
 using Daas.Application;
 using Daas.Application.Users.Queries;
 using Daas.Infrastructure;
+using Microsoft.EntityFrameworkCore;
+using Daas.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -84,5 +86,13 @@ var app = builder.Build();
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.MapControllers();
+
+// This ensures the database is created and migrations are applied on startup.
+
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    db.Database.Migrate();
+}
 
 app.Run();
