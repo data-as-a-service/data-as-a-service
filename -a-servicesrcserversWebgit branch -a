@@ -1,0 +1,180 @@
+[33mcommit 6a502f875d5579b26ef960f11e2601b42259c744[m[33m ([m[1;36mHEAD[m[33m, [m[1;31mpersonal/Feature/DummyDataGeneratorService-V2[m[33m, [m[1;32mFeature/DummyDataGeneratorService-V2[m[33m)[m
+Author: CHINTHAMANI SAI KRISHNA <saikrishnaias2004@gmail.com>
+Date:   Mon Feb 9 23:50:56 2026 +0530
+
+    DAAS - Added "STRING" generator service to the data generator factory.
+
+[33mcommit 91d44a1ea00d9a1daaa88761449e006bba615a03[m
+Author: CHINTHAMANI SAI KRISHNA <saikrishnaias2004@gmail.com>
+Date:   Mon Feb 9 23:50:23 2026 +0530
+
+    DAAS - Added INT generator service to the datagenerator factory.
+
+[33mcommit fb27fe538e091e970699f3b3f88af37d09428762[m
+Author: CHINTHAMANI SAI KRISHNA <saikrishnaias2004@gmail.com>
+Date:   Mon Feb 9 23:49:13 2026 +0530
+
+    DAAS - Modified payloadqueryhandler to use the data generator service.
+
+[33mcommit 819d99a3919860ca73c6c25d884676064d002a60[m
+Author: CHINTHAMANI SAI KRISHNA <saikrishnaias2004@gmail.com>
+Date:   Mon Feb 9 23:48:04 2026 +0530
+
+    DAAS - Registered Scoped DI of random and FieldGenerator objects to program.cs
+
+[33mcommit 886aeb1d44618d651f9b866cd57e738718b14865[m
+Author: CHINTHAMANI SAI KRISHNA <saikrishnaias2004@gmail.com>
+Date:   Mon Feb 9 23:47:03 2026 +0530
+
+    DAAS - Added FieldGeneratorFactory which takes all the types added as enums.
+
+[33mcommit 74244ef3d68fe6c6b06ebac747059d895b457b36[m
+Author: CHINTHAMANI SAI KRISHNA <saikrishnaias2004@gmail.com>
+Date:   Mon Feb 9 23:46:25 2026 +0530
+
+    DAAS - Added IFieldValueGenerator interface with Generator method.
+
+[33mcommit b01e3615db945b6e7aea77141502361b8f611815[m
+Author: CHINTHAMANI SAI KRISHNA <saikrishnaias2004@gmail.com>
+Date:   Mon Feb 9 23:45:28 2026 +0530
+
+    DAAS - Changed the request model fieldtype data type to enum FieldType data type.
+
+[33mcommit 7e3fa3cd15a7b1169e4e36c9ad11fe31ab03f45a[m
+Author: CHINTHAMANI SAI KRISHNA <saikrishnaias2004@gmail.com>
+Date:   Mon Feb 9 23:44:02 2026 +0530
+
+    DAAS - Added enum fieldTypes instead of maintating a string.
+
+[33mcommit 10c52f44a2cac855cf4726d809b08f9e16ce058c[m[33m ([m[1;31mpersonal/Feature/ModelApi[m[33m, [m[1;32mFeature/ModelApi[m[33m, [m[1;32mFeature/DummyDataGeneratorService[m[33m)[m
+Author: CHINTHAMANI SAI KRISHNA <saikrishnaias2004@gmail.com>
+Date:   Wed Feb 4 23:58:44 2026 +0530
+
+    DAAS - Updated the GetPayloadQuery and GetPayloadQueryHandler to accept "howmany" parameter from route and also support the generation logic.
+
+[33mcommit bdfd7e552e3e7273958eb3c21e7b6ea66b0438fc[m
+Author: CHINTHAMANI SAI KRISHNA <saikrishnaias2004@gmail.com>
+Date:   Wed Feb 4 23:56:58 2026 +0530
+
+    DAAS - Upadted the RequestModel for DummyDataGenerator controller with required (not null) and the ResponseModel with null check.
+
+[33mcommit 699fb61a4af43826c5c87c7c9f9f308dd8c3f1cd[m
+Author: CHINTHAMANI SAI KRISHNA <saikrishnaias2004@gmail.com>
+Date:   Wed Feb 4 23:55:09 2026 +0530
+
+    DAAS - Updated the DummyDataGenerator controller with new route parameter "howmany".
+
+[33mcommit ae708701d77562f71024081a402d952d32ba41aa[m
+Author: CHINTHAMANI SAI KRISHNA <saikrishnaias2004@gmail.com>
+Date:   Wed Feb 4 23:41:08 2026 +0530
+
+    DAAS - Updated Request Model "fieldType" to "fieldName" .
+
+[33mcommit e397d466ba42aa4e8488b9fcc9138d69eca9a1b7[m
+Author: CHINTHAMANI SAI KRISHNA <saikrishnaias2004@gmail.com>
+Date:   Wed Feb 4 23:40:01 2026 +0530
+
+    Daas - Updated the Controller route, method name and Return type.
+
+[33mcommit 845d63b1206d775b78e911a6a6c097e15c30296c[m
+Author: Akash C <121154000+akashc15@users.noreply.github.com>
+Date:   Tue Feb 3 22:37:36 2026 +0530
+
+    Added the ResultModel
+
+[33mcommit b2c13a2d40f4ff1f0530f493d80400ed54ad9afc[m
+Author: Akash C <121154000+akashc15@users.noreply.github.com>
+Date:   Tue Feb 3 20:40:56 2026 +0530
+
+    Added the Query and QueryHandler
+
+[33mcommit fd9da9eddd3827f938c377ab2255f1fa45b23e44[m
+Author: Akash C <121154000+akashc15@users.noreply.github.com>
+Date:   Tue Feb 3 20:22:53 2026 +0530
+
+    Added the RequestDTO
+
+[33mcommit 7b31e54e421621e7ee55823f58dad6d76a990e3e[m
+Author: Akash C <121154000+akashc15@users.noreply.github.com>
+Date:   Tue Feb 3 20:17:15 2026 +0530
+
+    imported RequestDTO
+
+[33mcommit 2a14de9ab856dc97460605e1046f24012e93807b[m
+Author: Akash C <121154000+akashc15@users.noreply.github.com>
+Date:   Tue Feb 3 20:10:37 2026 +0530
+
+    Added the DummyData
+
+[33mcommit fac0fbe5e1e8e3ed98cdeea9c1d3c51d81a0deb9[m[33m ([m[1;31mpersonal/main[m[33m, [m[1;31mpersonal/HEAD[m[33m, [m[1;32mmain[m[33m)[m
+Author: Akash C <121154000+akashc15@users.noreply.github.com>
+Date:   Thu Jan 29 20:15:53 2026 +0530
+
+    Imported DummyModel in controller
+
+[33mcommit e68835c70f8506ed1431bf9edcb7db9c2df92923[m
+Merge: 1a78228 04b7357
+Author: Chinthamani Sai Krishna <115464391+chinthamanisaikrishna7@users.noreply.github.com>
+Date:   Wed Jan 28 23:46:02 2026 +0530
+
+    Merge pull request #1 from chinthamanisaikrishna7/Feature/DummyApiChecks
+    
+    DummyApi
+
+[33mcommit 04b735785a6935cc8ba6f70d6229b33f3396f039[m[33m ([m[1;31mpersonal/Feature/DummyApiChecks[m[33m)[m
+Author: Akash C <121154000+akashc15@users.noreply.github.com>
+Date:   Wed Jan 28 23:35:09 2026 +0530
+
+    DAAS - Added Dummy Entity
+    
+    Added Dummy model in entities.
+
+[33mcommit a99b2ffab05dcd626232bee2afca1b96291eb203[m
+Author: Akash C <121154000+akashc15@users.noreply.github.com>
+Date:   Wed Jan 28 23:32:26 2026 +0530
+
+    Added RequestHandlers
+    
+    Added dummy IRequest and IRequestHandler with seed data of type Dummy.
+
+[33mcommit 6abc5c4f03084005548295a9be0d96fa7aa66e4b[m
+Author: Akash C <121154000+akashc15@users.noreply.github.com>
+Date:   Wed Jan 28 23:03:37 2026 +0530
+
+    Added a Dummy API
+
+[33mcommit 1a7822864cad65b0566ede43f6b14f06529ae02f[m
+Author: CHINTHAMANI SAI KRISHNA <saikrishnaias2004@gmail.com>
+Date:   Thu Jan 22 22:58:59 2026 +0530
+
+    DAAS - Added a Dummy Controller - All Connections Work.
+
+[33mcommit dfa2385495c45d8d3dbbf54de91d6a6136930df1[m
+Author: CHINTHAMANI SAI KRISHNA <saikrishnaias2004@gmail.com>
+Date:   Thu Jan 22 22:22:26 2026 +0530
+
+    DAAS - Added Packages, Connection String and Ran first Migrations to create DB.
+
+[33mcommit aa5876e008275bf3944a82f4039d3f93572dc991[m
+Author: CHINTHAMANI SAI KRISHNA <saikrishnaias2004@gmail.com>
+Date:   Wed Jan 21 21:05:46 2026 +0530
+
+    DAAS - Installed NUGET Packages
+
+[33mcommit 05979aa3705c974166ff914a5a358077104c20ff[m
+Author: CHINTHAMANI SAI KRISHNA <saikrishnaias2004@gmail.com>
+Date:   Wed Jan 21 20:52:07 2026 +0530
+
+    Added Links between class libraries.
+
+[33mcommit 68ff166ebf5ee578610ca832aae2b94089668f21[m
+Author: CHINTHAMANI SAI KRISHNA <saikrishnaias2004@gmail.com>
+Date:   Tue Jan 13 22:13:16 2026 +0530
+
+    Add project files.
+
+[33mcommit cff1a6cd4539732f58c7ee6206e6fedb7c6f0125[m
+Author: CHINTHAMANI SAI KRISHNA <saikrishnaias2004@gmail.com>
+Date:   Tue Jan 13 22:13:14 2026 +0530
+
+    Add .gitattributes, .gitignore, README.md, and LICENSE.txt.
