@@ -19,3 +19,13 @@ dotnet run --project src/servers/Web/Daas.Api/Daas.Api.csproj
 ```
 
 The API provides schema create/list/get/delete endpoints and `GET /api/schema/{id}/data/{howmany}` to generate the requested number of records. Swagger is enabled at `/swagger`.
+
+## Run the API and React frontend
+
+On Windows, start both development servers with:
+
+```powershell
+./scripts/start-dev.ps1
+```
+
+The script starts the API, waits for its Swagger endpoint to respond, and then starts the React development server. Open <http://127.0.0.1:5173>; the frontend proxies API requests to <http://localhost:5247>. If frontend dependencies are not installed yet, the script installs them from the lockfile. Press Ctrl+C to stop both servers.
