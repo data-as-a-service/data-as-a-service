@@ -2,7 +2,33 @@
 
 Date: 2026-10-07
 
-This document records the read-only architecture review and proposed migration for simplifying the application to **Controller → Service → EF Core database access** while preserving the current behavior and the field-value generator factory. No refactor has been implemented as part of this analysis.
+This document records the original architecture review and migration plan, followed by the implementation result. The refactor was completed incrementally on `refactor/simplify-architecture` with the commit history recorded below.
+
+## Implementation result (2026-10-07)
+
+The solution is now a single `Daas.Api` project. Its folders separate controllers, services, contracts, generation, and EF Core data access. Controllers call services; services use `AppDbContext` directly. EF Core and SQL Server remain in use, and the existing factory and generator mappings remain in `Generation`.
+
+Removed projects: `Daas.Application`, `Daas.Domain`, and `Daas.Infrastructure`. Their active source files were moved into `Daas.Api`; the existing migration IDs, entity namespaces, and DbContext namespace were retained. The API and solution project references were updated.
+
+Removed MediatR 14.0.0 package references and CQRS request/handler files, plus the `IAppDbContext` abstraction. The unused explicit `Microsoft.EntityFrameworkCore` and `Microsoft.Extensions.Configuration`, `.FileExtensions`, and `.Json` package references from Infrastructure were removed with that project. SQL Server, EF design-time, and EF tooling packages are referenced by the API project; Swagger remains.
+
+Incremental commits on the requested branch:
+
+| Commit | Change |
+| --- | --- |
+| `e3f5040` | Moved schema CRUD and schema/mock generation behind `SchemaService` |
+| `bba6e97` | Routed users, dummy, and payload endpoints through `UserService` |
+| `f049fb2` | Removed MediatR/CQRS request and handler flow and `IAppDbContext` |
+| `6434cb6` | Consolidated active code and migrations into the API project |
+
+Validation performed during implementation:
+
+- `dotnet build data-as-a-service.sln` succeeds with 0 errors. Existing nullable and factory enum warnings remain; the current restore also reports `NU1903` for transitive `Microsoft.OpenApi` 2.3.0.
+- `dotnet test data-as-a-service.sln --no-restore` exits successfully, but the solution has no test projects or discovered tests.
+- `dotnet ef dbcontext info` successfully creates `Daas.Infrastructure.Persistence.AppDbContext` with the SQL Server provider and configured database name.
+- Runtime smoke checks passed for `GET /akash` and `POST /DummyData/3`. The temporary HTTP-only launch produced the existing HTTPS-port warning; the first request attempt was also affected by the host's denied Event Log writes, then passed with Event Log warning logging suppressed for the temporary process.
+
+Still requiring manual verification against the intended SQL Server: `GET /api/users`, schema create/list/get/delete, cascade deletion, schema data generation, and `GET /mock/{id}`. No database schema or migration was applied during this refactor. The migration snapshot inconsistency and the two field-type enum mappings described below remain as pre-existing conditions and should be verified before creating future migrations or changing field-type behavior.
 
 ## Current solution and project responsibilities
 
@@ -94,7 +120,7 @@ Keep EF Core and SQL Server. Use scoped service registrations and the existing D
 
 ## Proposed file/project disposition
 
-This is a proposed disposition only; no files have been moved or deleted.
+This was the proposed disposition before implementation. Completed moves and removals are summarized in the implementation result at the top of this document.
 
 ### Projects to remove after migration
 
@@ -147,9 +173,9 @@ Do not remove the factory or its generator implementations. Do not remove the `M
 4. Register services and existing DbContext in API startup; remove MediatR assembly scanning and package references once no handler types remain.
 5. Consolidate active Application, Domain, and Infrastructure files into API folders, preserving namespaces/model identity where useful; keep migrations and design-time creation functional.
 6. Remove only confirmed unused/comment-only artifacts and project references; update both solution files and Docker build/publish paths.
-7. Build and run endpoint-level regression checks against a disposable/configured SQL Server database, comparing routes, status codes, JSON shapes, persistence, cascades, and generator behavior to the baseline. (This is future implementation verification, not performed in this analysis.)
+7. Build and run endpoint-level regression checks against a disposable/configured SQL Server database, comparing routes, status codes, JSON shapes, persistence, cascades, and generator behavior to the baseline. Database-backed checks remain for a connected environment.
 8. Review the final diff for accidental enum, migration, package, frontend, or route changes before considering the migration complete.
 
 ## Scope boundary
 
-This note is the only intended artifact of the analysis task. No architecture refactor, package change, database change, migration edit, or endpoint behavior change has been performed. Implementation should wait for the user's approval of the proposed plan.
+The implementation preserved the current API routes and business behavior without changing EF Core to Dapper or adding a repository, CQRS, MediatR, event store, or projection layer. It kept `MockController` and all existing mapped controllers. Database-backed HTTP behavior still needs an end-to-end check in an environment connected to the application's configured SQL Server.
