@@ -54,12 +54,19 @@ public class SchemaController : ControllerBase
     [HttpGet("{id}/data/{howmany}")]
     public IActionResult GenerateData(Guid id, int howmany)
     {
-        var result = _schemaService.GenerateData(id, howmany);
-        if (result == null)
+        try
         {
-            return NotFound();
-        }
+            var result = _schemaService.GenerateData(id, howmany);
+            if (result == null)
+            {
+                return NotFound();
+            }
 
-        return Ok(result);
+            return Ok(result);
+        }
+        catch (NotSupportedException exception)
+        {
+            return BadRequest(new { error = exception.Message });
+        }
     }
 }
