@@ -12,7 +12,6 @@ builder.Services.AddDataAccess(builder.Configuration);
 builder.Services.AddSingleton<FieldGeneratorFactory>();
 builder.Services.AddSingleton<Random>();
 builder.Services.AddScoped<SchemaService>();
-builder.Services.AddScoped<UserService>();
 
 var app = builder.Build();
 

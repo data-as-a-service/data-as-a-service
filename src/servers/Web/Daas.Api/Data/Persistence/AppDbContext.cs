@@ -14,5 +14,4 @@ public class AppDbContext : DbContext
 
     public DbSet<FieldDefinition> FieldDefinitions => Set<FieldDefinition>();
 
-    public DbSet<User> Users => Set<User>();
 }
