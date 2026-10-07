@@ -2,11 +2,11 @@
 
 Date: 2026-10-08
 
-This document records the current product baseline and a phased plan for moving from architecture cleanup to a usable DaaS product. It is a planning document; it does not authorize or describe implementation as completed.
+This document records the current product baseline and the next implementation priorities. The schema, generation, React MVP, and public API-link workflows are implemented. The next priority is reliable database initialization and upgrades; access control is reserved for the final launch-readiness phase as requested.
 
 ## Current implementation
 
-The solution contains one ASP.NET Core API project. `SchemaController` handles HTTP routes and delegates to `SchemaService`. The service contains schema CRUD, direct Dapper/SQL Server access, and schema-backed data generation. SQL access uses `ConnectionStrings:DefaultConnection`.
+The solution contains one ASP.NET Core API project and a React/Vite client. The API uses the controller → service → Dapper/SQL Server flow. `SchemaController` provides schema CRUD and preview generation; `ApiLinkController` manages links; `MockController` serves public generated data. SQL access uses `ConnectionStrings:DefaultConnection`.
 
 The API currently exposes:
 
@@ -17,28 +17,32 @@ The API currently exposes:
 | `GET /api/schema/{id}` | Gets a schema and its fields, or returns 404 |
 | `DELETE /api/schema/{id}` | Deletes a schema and cascaded fields, or returns 404 |
 | `GET /api/schema/{id}/data/{howmany}` | Generates the requested number of records, or returns 404 |
+| `GET/POST /api/schema/{id}/links` | Lists/creates links for a schema |
+| `PUT/DELETE /api/schema/{id}/links/{linkId}` | Updates/revokes a link |
+| `POST /api/schema/{id}/links/{linkId}/rotate` | Rotates the bearer key and returns a replacement URL |
+| `GET /api/mock/{publicKey}` | Returns generated JSON for an active link; optional bounded `count` override |
 
 `FieldGeneratorFactory` maps Int, String, Boolean, Float, Character, Guid, Date, and Double to the existing generators. A singleton `Random` is injected into the factory. Values are random; generation is not repeatable from a request seed. The stored field type enum has more values than the factory supports.
 
-The database initialization script creates `dbo.Schemas` and `dbo.FieldDefinitions`; fields are flat and cascade-delete with their parent schema. There are no tables for users, nested schema nodes, generation configuration, or API links.
+The database uses `dbo.Schemas`, `dbo.FieldDefinitions`, and `dbo.ApiLinks`; schema-owned fields and links cascade-delete. `scripts/initialize-database.sql` creates the base schema; numbered scripts in `scripts/database-updates` add later schema changes and record applied IDs in `dbo.SchemaMigrations`. `scripts/setup-database.ps1` runs both steps for fresh or existing databases. The API does not apply DDL automatically at startup.
 
-There is no React frontend. `wwwroot` contains a basic HTML/JavaScript prototype for schema creation/listing and generation, but the page contains duplicate handlers and unfinished behavior. Swagger is enabled. No authentication or authorization, test project, or Docker Compose setup was found. A multi-stage Dockerfile builds the API. There is no JSON upload, tree/schema inference, nested JSON generation, API-link management, or Ollama integration.
+The React client supports schema management, data preview, and API-link management. Swagger is enabled. There is no authentication/authorization or automated test project. A multi-stage Dockerfile builds the API, though a repeatable deployed setup still needs verification. JSON import, nested JSON generation, and Ollama integration are not implemented.
 
 ## Reusable foundation
 
 - Keep the existing controller → service → Dapper/SQL Server flow.
 - Preserve the schema CRUD behavior and API contracts unless a product requirement justifies a change.
 - Reuse `FieldGeneratorFactory` and its mappings for ordinary generated values.
-- Build a React client against the backend as the source of truth for available functionality.
+- Keep the React client aligned with backend functionality and API contracts.
 - Keep Swagger and the existing Docker build as useful development/deployment foundations.
 
-The current generator is a starting point for deterministic generation, but is not itself deterministic: it uses an unseeded random source. A repeatable mode needs explicit seed semantics and tests.
+The existing generator uses an unseeded random source. Responses are random on each request by design for the current MVP. A repeatable seeded mode is a future enhancement and needs explicit seed semantics and tests.
 
 ## Product decisions and changes eventually needed
 
-### MVP
+### Shipped MVP
 
-Ship a usable schema workflow before taking on AI or nested structures. The proposed MVP is a React interface to create, list, view, and delete flat schemas and preview generated records, backed by repeatable deterministic generation. Define validation, record-count limits, errors, and seed behavior as part of the API contract. Add focused tests for generator repeatability and important API behavior.
+The React schema workflow and public API links are implemented. Schemas remain flat, generated values are random, API links are public bearer URLs, and record counts are bounded. Focus now on safe database setup/upgrade, focused automated tests, and deployment readiness before expanding product scope.
 
 ### API links: MVP decisions
 
@@ -60,24 +64,23 @@ Keep deterministic generation available independently. The main API should own H
 
 ## Phased implementation plan
 
-1. **Confirm the MVP contract.** Settle schema validation, record limits, repeatable seed behavior, error responses, and whether API links belong in the first release. Keep the initial schema flat unless nested input is explicitly promoted into the MVP.
-2. **Make deterministic generation repeatable.** Extend the existing generation path with an explicit seed/option contract while preserving current factory mappings and default behavior where practical. Add focused tests for repeatability, supported types, and API behavior.
-3. **Build the React MVP.** Create a small feature-oriented React client for schema management and data preview. Consume the existing API and adjust backend contracts only where the agreed MVP requires it. Configure local development and deployment for the client without introducing unnecessary state-management or architecture dependencies.
-4. **Add generated API links.** Persist link records referencing schemas, add create/list/revoke/rotate management endpoints, and expose `GET /api/mock/{publicKey}`. Use public high-entropy bearer keys, bounded record counts, basic rate limiting, and the existing random generator. Defer identity/project ownership until account and project workflows exist.
-5. **Add nested JSON schema support.** Validate uploaded JSON, convert it into a recursive schema/tree, persist it using a suitable representation, and generate data with the same nested object/array shape.
-6. **Add optional Ollama generation.** Implement the separate optional provider/integration with bounded requests and deterministic fallback. Verify that the main API remains operational with Ollama unavailable.
-7. **Harden deployment.** Once the target environment is selected, add only the needed database/service orchestration, configuration, health checks, and operational guidance.
+1. **Make database updates reliable (completed).** `scripts/setup-database.ps1` initializes a new or existing SQL Server database, applies ordered incremental migrations, tracks applied migration IDs, and can be safely rerun. The API does not apply DDL automatically at startup.
+2. **Add focused automated tests.** Cover schema CRUD and generated output, link creation/key secrecy/rotation/revocation/expiry/count limits, and migration rerun behavior. Use a real SQL Server integration target for persistence checks when available; keep unit tests independent of SQL Server.
+3. **Verify deployment readiness.** Run the React client and API against a fresh database and an upgraded existing database. Document environment configuration, HTTPS/proxy behavior, rate limits, startup checks, and recovery steps for failed SQL updates.
+4. **Add access control (final launch-hardening phase).** When account/project access is flagged for implementation, decide user versus project ownership, protect schema and link-management routes, and preserve the public bearer route for consumers. This is intentionally deferred until the other MVP paths and deployment workflow are stable.
+5. **Add nested JSON schema support.** Define accepted JSON shapes and validation first, then choose recursive relational nodes or versioned JSON persistence and generate the same object/array shape.
+6. **Consider deterministic generation and optional Ollama.** Define seed semantics and repeatability if requested. Keep Ollama optional and verify deterministic generation remains available if Ollama is unavailable.
 
 ## Explicitly defer
 
-Defer Ollama integration, a standalone generation microservice, nested JSON, user/project identity and ownership, link expiry by default, deterministic/seeded responses, configurable delays/status/headers, query-driven generation, detailed usage logs, and a larger architectural split. These are useful extensions but add product, security, schema, or operational complexity that is not needed to make the initial public link workflow usable. Revisit based on concrete usage and deployment needs. Do not introduce CQRS/MediatR, event sourcing, Clean/Onion Architecture, or unnecessary repository abstractions.
+Defer Ollama integration, a standalone generation microservice, nested JSON, account/project ownership and access control (planned as the final launch-hardening phase), link expiry by default, deterministic/seeded responses, configurable delays/status/headers, query-driven generation, detailed usage logs, and a larger architectural split. These are useful extensions but add product, security, schema, or operational complexity that is not needed to make the current MVP paths work. Revisit based on concrete usage and deployment needs. Do not introduce CQRS/MediatR, event sourcing, Clean/Onion Architecture, or unnecessary repository abstractions.
 
 ## Dependencies and database evolution
 
-The current API already depends on ASP.NET Core, Dapper, Microsoft.Data.SqlClient, and SQL Server. The React phase will need a JavaScript package/build workflow and a chosen way to serve or deploy the client; select the smallest setup that fits the deployment target. Automated tests will require a test project and test framework, selected when that phase is implemented. Ollama integration will eventually require an HTTP client/configuration and an Ollama service/runtime, but the API must treat it as optional.
+The API depends on ASP.NET Core, Dapper, Microsoft.Data.SqlClient, and SQL Server. The React client uses Vite and npm; deployment still needs a selected hosting/serving arrangement. Automated tests will require a test project and framework. Ollama integration would require an HTTP client/configuration and an Ollama service/runtime, but the API must treat it as optional.
 
-API links require a `dbo.ApiLinks` table because they have independent keys and lifecycle. The MVP table should store link ID, schema ID, key hash, active/revoked state, creation time, optional expiry, and default record count, with a unique key-hash index and cascading schema foreign key. Do not add users/projects or usage-log tables until those capabilities are selected. Nested schemas will require persistence beyond flat `FieldDefinitions`; choose recursive relational nodes or a versioned JSON document after defining query/update needs.
+`dbo.ApiLinks` stores independent link keys and lifecycle. Ordered SQL updates in `scripts/database-updates` are applied with the explicit `scripts/setup-database.ps1` command and recorded in `dbo.SchemaMigrations`. Do not add user/project or usage-log tables until those capabilities are selected. Nested schemas will require persistence beyond flat `FieldDefinitions`; choose recursive relational nodes or a versioned JSON document after defining query/update needs.
 
 ## Approval boundary
 
-This roadmap records the selected API-link MVP scope and deferred improvements. Implementation is authorized for the feature phase; work should follow the repository Git workflow and be committed in reviewable units.
+This roadmap records shipped MVP functionality, the selected database-update workflow, and deferred improvements. Follow the repository Git workflow and commit implementation on feature branches; documentation-only commits may be made on `main` as directed by the user.

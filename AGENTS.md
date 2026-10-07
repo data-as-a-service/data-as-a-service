@@ -16,7 +16,7 @@ Data Access
 Database
 ```
 
-Controllers handle HTTP concerns. Services contain application and business logic. Data access handles persistence and database interaction. The current API focuses on schema CRUD and dummy data generation from stored schemas.
+Controllers handle HTTP concerns. Services contain application and business logic. Data access handles persistence and database interaction. The API provides schema CRUD, schema-backed data generation, and generated API links using stored schemas.
 
 # Architecture Constraints
 
@@ -35,7 +35,7 @@ Do not recreate architecture that has been intentionally removed. If a new abstr
 
 The application uses Dapper and SQL Server. Prefer straightforward SQL and Dapper-based access. Do not reintroduce Entity Framework Core or another ORM unless explicitly requested. Do not add an unnecessary database abstraction layer.
 
-The SQL Server initialization script is `scripts/initialize-database.sql`.
+Use `scripts/setup-database.ps1 -Server "<sql-server>"` to initialize a database and apply versioned SQL updates from `scripts/database-updates`. The API must not run schema-changing SQL automatically at startup. Update scripts should be additive, transactional where practical, safe to apply to an existing database, and recorded in `dbo.SchemaMigrations`.
 
 # Existing Factory
 
@@ -66,7 +66,7 @@ When modifying existing functionality:
 
 # Feature Boundaries
 
-Treat major product areas as separate pieces of work. Potential future areas include a React frontend, API/data link generation, deterministic dummy data generation, realistic or AI-generated data, optional Ollama integration, nested JSON/schema support, and deployment. These are not assumptions about current implementation. Do not combine unrelated feature work or add backend functionality merely to make a frontend appear complete unless explicitly requested. The backend API remains the source of truth for available functionality.
+Treat major product areas as separate pieces of work. The React schema/generation client and public API-link workflow now exist. Future areas include deterministic generation, realistic or AI-generated data, optional Ollama integration, nested JSON/schema support, access control, and deployment. Do not combine unrelated feature work or add backend functionality merely to make the frontend appear complete unless explicitly requested. The backend API remains the source of truth for available functionality.
 
 # Future AI Data Generation
 
@@ -74,7 +74,7 @@ Ollama may be supported as an optional future capability. The core application m
 
 # Frontend
 
-The frontend is planned to use React. Keep its architecture simple and feature-oriented. Do not introduce unnecessary state-management libraries or complex frontend architecture without a concrete need.
+The frontend uses React and is organized by feature. Keep its architecture simple. Do not introduce unnecessary state-management libraries or complex frontend architecture without a concrete need.
 
 # Git Workflow
 

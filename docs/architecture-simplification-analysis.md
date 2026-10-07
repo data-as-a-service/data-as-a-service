@@ -25,6 +25,10 @@ Incremental commits on the requested branch:
 | `4ef08fe` | Replaced EF schema access with Dapper |
 | `606fe40` | Removed EF Core and migration files |
 
+## Later product and database updates (2026-10-08)
+
+After this architecture review, the project added a React client and public schema API links. Database setup now uses `scripts/setup-database.ps1`: it runs the safe baseline initializer and ordered scripts under `scripts/database-updates`, recording applied IDs in `dbo.SchemaMigrations`. The initializer no longer drops the legacy `Users` table. See `docs/product-roadmap.md` and ADR 0002 for the current plan and database-update decision.
+
 Validation performed during implementation:
 
 - `dotnet build data-as-a-service.sln` succeeds with 0 errors. Existing nullable and factory enum warnings remain; the current restore also reports `NU1903` for transitive `Microsoft.OpenApi` 2.3.0.
@@ -76,10 +80,10 @@ There is no event bus, event store, event sourcing, or projection code in the ac
 
 - No repository interface or repository implementation exists.
 - `SchemaService` reads and writes `dbo.Schemas` and `dbo.FieldDefinitions` with Dapper and `ConnectionStrings:DefaultConnection`.
-- `scripts/initialize-database.sql` creates the `Daas` database, schema tables, cascade FK, and field schema index; it drops the obsolete `Users` table when present.
+- `scripts/initialize-database.sql` creates the `Daas` database and base schema tables. `scripts/setup-database.ps1` applies the baseline plus numbered, tracked database updates.
 - Schema and field data types are simple data shapes with no event behavior or domain services.
 
-EF migration history was removed on the Dapper branch. Database initialization is now performed by the checked-in SQL script.
+EF migration history was removed on the Dapper branch. Database initialization and incremental updates use checked-in SQL scripts applied explicitly through the PowerShell setup command.
 
 ## Factory and random value generation (must preserve)
 

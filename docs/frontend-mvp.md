@@ -6,10 +6,11 @@ Build a small React application around the backend's existing schema and data-ge
 
 ## Information architecture
 
-The MVP has two primary areas:
+The current client has three primary areas:
 
 - **Schemas**: list schemas, create a schema with flat fields, inspect its details, and delete it.
 - **Generate data**: select a saved schema and record count, request generated records, and inspect or copy the JSON response.
+- **API links**: select a schema, create a public GET link, set its default record count and optional expiry, then rotate or revoke the link.
 
 Schema creation and details can be views or dialogs within the Schemas area. They do not require separate top-level navigation entries.
 
@@ -22,6 +23,12 @@ Schema creation and details can be views or dialogs within the Schemas area. The
 | `POST /api/schema` | Create a schema; request body contains `name` and `fields` with `fieldName` and numeric `fieldType`; response contains `id` |
 | `DELETE /api/schema/{id}` | Delete a schema; returns `204` or `404` |
 | `GET /api/schema/{id}/data/{howmany}` | Generate the requested number of records; returns an array or `404` |
+| `GET /api/schema/{id}/links` | List link metadata without exposing bearer keys |
+| `POST /api/schema/{id}/links` | Create a link and reveal its URL once |
+| `PUT /api/schema/{id}/links/{linkId}` | Update count and expiry |
+| `DELETE /api/schema/{id}/links/{linkId}` | Revoke a link |
+| `POST /api/schema/{id}/links/{linkId}/rotate` | Replace the bearer key and return a new URL |
+| `GET /api/mock/{publicKey}` | Generate the configured record count; optional bounded `count` override |
 
 The API uses numeric `FieldTypes` values in create requests. The supported values are explicitly numbered to preserve existing stored schemas and match the existing generator factory: `INT`, `FLOAT`, `BOOLEAN`, `STRING`, `CHAR`, `GUID`, `DATE`, and `DOUBLE`. The frontend offers these eight types. Other schema enum values remain unsupported and generation requests for them return `400 Bad Request`. Keep these numeric assignments stable; changing persisted meanings requires a database migration.
 
@@ -40,11 +47,17 @@ The API uses numeric `FieldTypes` values in create requests. The supported value
 - Displays generated records as formatted JSON and offers copy-to-clipboard.
 - Provides loading, no-schemas, ready, generating, results, and error states.
 
+### API links
+
+- Loads schemas and their active/revoked/expired links.
+- Creates a bearer URL and supports copying it when created or rotated. A lost URL must be rotated because only a hash is stored.
+- Supports adjusting record count and expiry, rotating, and revoking links.
+- Public link requests are rate limited by client IP and return random flat-schema records.
+
 ## Deferred areas
 
 - **Dashboard**: no metrics or activity endpoints exist.
 - **JSON/schema tree management**: the API stores flat fields and has no JSON Schema import/export or nested-field support.
-- **Generated API links**: there are no endpoints to create, configure, or revoke persistent links.
 - **Settings**: there are no user or application configuration endpoints. The API base URL is a deployment/developer configuration concern for the MVP.
 
 These areas require separate product decisions and, where necessary, backend support before they should become frontend pages.
