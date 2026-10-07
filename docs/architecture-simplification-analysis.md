@@ -2,15 +2,15 @@
 
 Date: 2026-10-07
 
-This document records the original architecture review and migration plan, followed by the implementation result. The refactor was completed incrementally on `refactor/simplify-architecture` with the commit history recorded below.
+This document records the original architecture review and the completed implementation. The schema-only cleanup was completed on `refactor/simplify-architecture`; the EF Core to Dapper migration was completed on `refactor/use-dapper`.
 
 ## Implementation result (2026-10-07)
 
-The solution is now a single `Daas.Api` project. Its folders separate controllers, services, contracts, generation, and EF Core data access. Controllers call services; services use `AppDbContext` directly. EF Core and SQL Server remain in use, and the existing factory and generator mappings remain in `Generation`.
+The solution is now a single `Daas.Api` project. It contains the schema controller and service, schema/field data types, and the existing field generator factory and generators. The controller calls `SchemaService`, which uses Dapper and SQL Server directly. EF Core, MediatR/CQRS, unrelated user/mock flows, and their data have been removed. The existing factory and generator mappings remain in `Generation`.
 
-Removed projects: `Daas.Application`, `Daas.Domain`, and `Daas.Infrastructure`. Their active source files were moved into `Daas.Api`; the existing migration IDs, entity namespaces, and DbContext namespace were retained. The API and solution project references were updated.
+Removed projects: `Daas.Application`, `Daas.Domain`, and `Daas.Infrastructure`. Their retained types and generators were moved into `Daas.Api`. The solution now contains only that API project.
 
-Removed MediatR 14.0.0 package references and CQRS request/handler files, plus the `IAppDbContext` abstraction. The unused explicit `Microsoft.EntityFrameworkCore` and `Microsoft.Extensions.Configuration`, `.FileExtensions`, and `.Json` package references from Infrastructure were removed with that project. SQL Server, EF design-time, and EF tooling packages are referenced by the API project; Swagger remains.
+Removed MediatR, Entity Framework Core and its SQL Server/design/tooling packages, CQRS request/handler files, `IAppDbContext`, and obsolete users persistence. The API now references Dapper, Microsoft.Data.SqlClient, and Swashbuckle. `scripts/initialize-database.sql` creates the database and schema tables without EF migrations.
 
 Incremental commits on the requested branch:
 
@@ -20,15 +20,19 @@ Incremental commits on the requested branch:
 | `bba6e97` | Routed users, dummy, and payload endpoints through `UserService` |
 | `f049fb2` | Removed MediatR/CQRS request and handler flow and `IAppDbContext` |
 | `6434cb6` | Consolidated active code and migrations into the API project |
+| `4f2e91c` | Removed unrelated user/mock API flows and their data types |
+| `7305bde` | Removed the legacy users table from the schema model |
+| `4ef08fe` | Replaced EF schema access with Dapper |
+| `606fe40` | Removed EF Core and migration files |
 
 Validation performed during implementation:
 
 - `dotnet build data-as-a-service.sln` succeeds with 0 errors. Existing nullable and factory enum warnings remain; the current restore also reports `NU1903` for transitive `Microsoft.OpenApi` 2.3.0.
 - `dotnet test data-as-a-service.sln --no-restore` exits successfully, but the solution has no test projects or discovered tests.
-- `dotnet ef dbcontext info` successfully creates `Daas.Infrastructure.Persistence.AppDbContext` with the SQL Server provider and configured database name.
-- Runtime smoke checks passed for `GET /akash` and `POST /DummyData/3`. The temporary HTTP-only launch produced the existing HTTPS-port warning; the first request attempt was also affected by the host's denied Event Log writes, then passed with Event Log warning logging suppressed for the temporary process.
+- `dotnet build data-as-a-service.sln` succeeds with 0 errors. Existing compiler warnings and the current restore's `NU1903` warning for transitive `Microsoft.OpenApi` 2.3.0 remain.
+- `dotnet test data-as-a-service.sln --no-restore` exits successfully, but the solution has no test projects or discovered tests.
 
-Still requiring manual verification against the intended SQL Server: `GET /api/users`, schema create/list/get/delete, cascade deletion, schema data generation, and `GET /mock/{id}`. No database schema or migration was applied during this refactor. The migration snapshot inconsistency and the two field-type enum mappings described below remain as pre-existing conditions and should be verified before creating future migrations or changing field-type behavior.
+Still requiring manual verification against SQL Server: run `scripts/initialize-database.sql`, then exercise schema create/list/get/delete, cascade deletion, and generation endpoints against that database. The Dapper queries and script were not executed against a live database.
 
 ## Current solution and project responsibilities
 
@@ -36,36 +40,29 @@ The solution is `data-as-a-service.sln` (also represented by `data-as-a-service.
 
 | Project | Current responsibility | Dependencies |
 | --- | --- | --- |
-| `Daas.Api` | ASP.NET Core startup, controllers, static frontend, Swagger; owns `MediatR` registration | Application, Infrastructure; MediatR, EF design-time package, Swashbuckle |
-| `Daas.Application` | MediatR request/handler pairs, `IAppDbContext` abstraction, request DTO, and field-value generator/factory | Domain; MediatR |
-| `Daas.Domain` | Schema, field, user, and dummy entities plus a result model and two field-type enums | None |
-| `Daas.Infrastructure` | SQL Server EF Core `AppDbContext`, DI registration, design-time factory, and migrations | Application, Domain; EF Core/SQL Server/configuration packages |
+| `Daas.Api` | ASP.NET Core schema API, schema service, Dapper data access, schema/field types, field generation, static frontend, and Swagger | Dapper, Microsoft.Data.SqlClient, Swashbuckle |
 
-The project graph is not a full conventional onion/Clean Architecture implementation: the schema controllers directly inject Infrastructure's `AppDbContext` and do EF queries themselves, while a smaller Users path uses Application handlers and an interface. Infrastructure references Application only to implement `IAppDbContext`.
+There is one application project. `SchemaController` calls `SchemaService`; the service uses Dapper and SQL Server, and the retained `FieldGeneratorFactory` generates data.
 
 ## Current request flow and endpoints
 
-`Program.cs` registers controllers, Swagger, MediatR handlers from the Application assembly, Infrastructure's SQL Server DbContext, a singleton `FieldGeneratorFactory`, and a singleton `Random`. Static files are served from `wwwroot`; controllers are mapped. `AddInfrastructure` registers both `AppDbContext` and an `IAppDbContext` alias.
+`Program.cs` registers controllers, Swagger, a singleton `FieldGeneratorFactory` and `Random`, and `SchemaService`. Static files are served from `wwwroot`; controllers are mapped.
 
 | Route / verb | Current flow | Behavior to retain |
 | --- | --- | --- |
-| `GET /api/users` | `UsersController` → MediatR `GetUsersQueryHandler` → `IAppDbContext.Users` → EF | Returns all users |
-| `GET /akash` | `UsersController` → MediatR `GetDummyQueryHandler` | Returns `{ name: "aakash", address: "123" }` |
-| `POST /DummyData/{howmany}` | `UsersController` → MediatR `GetPayloadQueryHandlers` → `FieldGeneratorFactory` | Generates `howmany` dynamic rows from request field names/types; current handler stringifies generated values |
-| `POST /api/schema` | `SchemaController` → `AppDbContext` | Assigns a new GUID, saves schema and its supplied fields, returns `{ id }` |
-| `GET /api/schema/{id}` | `SchemaController` → EF Include Fields | Returns schema and fields or 404 |
-| `GET /api/schema` | `SchemaController` → EF Include Fields | Returns all schemas and fields |
-| `DELETE /api/schema/{id}` | `SchemaController` → EF Include Fields/remove/save | Returns 404 if missing, otherwise 204; FK is configured cascade delete |
-| `GET /api/schema/{id}/data/{howmany}` | `SchemaController` → EF Include Fields → factory | Generates dynamic records; returns 404 for an unknown schema |
-| `GET /mock/{id}` | `MockController` → EF Include Fields → factory | Generates 50 dynamic records; returns 404 for an unknown schema |
+| `POST /api/schema` | `SchemaController` → `SchemaService` → Dapper | Assigns a new GUID, saves schema and fields, returns `{ id }` |
+| `GET /api/schema/{id}` | `SchemaController` → `SchemaService` → Dapper | Returns schema and fields or 404 |
+| `GET /api/schema` | `SchemaController` → `SchemaService` → Dapper | Returns all schemas and fields |
+| `DELETE /api/schema/{id}` | `SchemaController` → `SchemaService` → Dapper | Returns 404 if missing, otherwise 204; SQL FK cascades field deletion |
+| `GET /api/schema/{id}/data/{howmany}` | `SchemaController` → `SchemaService` → Dapper and factory | Generates dynamic records; returns 404 for an unknown schema |
 
-The UI in `wwwroot/schemas.html` and `wwwroot/Script.js` calls schema list/create/delete and data generation. `Daas.Api.http` still contains a stale weather-forecast example, but no weather endpoint is mapped by the active startup code.
+The UI in `wwwroot/schemas.html` and `wwwroot/Script.js` calls schema list/create/delete and data generation.
 
 ## MediatR / CQRS inventory
 
-Active MediatR registration is in `Daas.Api/Program.cs`; the package is referenced by both API and Application. The API uses `IMediator` in `UserController` and `SchemaController` (the SchemaController mediator field is injected but unused).
+MediatR and CQRS request/handler code have been removed from the active solution.
 
-Active requests and handlers:
+Former active requests and handlers, removed during the refactor:
 
 - `GetUsersQuery` → `GetUsersQueryHandler` → `IAppDbContext`.
 - `GetDummyQuery` → `GetDummyQueryHandler` (static dummy response; no database).
@@ -73,22 +70,20 @@ Active requests and handlers:
 
 `SaveSchemaCommand` and `SaveSchemaCommandHandler` are entirely commented out, as is `Users/Commands/Class1.cs`; they are not part of current runtime behavior. Schema CRUD and schema-backed generation are already outside MediatR, implemented in controllers.
 
-There is no event bus, event store, event sourcing, or projection code in the repository. EF migration classes and `AppDbContextModelSnapshot` are normal relational schema versioning and are required for maintaining/updating the SQL Server schema; they are not projections and should remain.
+There is no event bus, event store, event sourcing, or projection code in the active application.
 
 ## Repositories, abstractions, persistence, and domain use
 
 - No repository interface or repository implementation exists.
-- `IAppDbContext` is the only data-access abstraction. It exposes `IQueryable<User>` and `SaveChangesAsync`, but only the Users query handler depends on it. The schema and mock endpoints inject concrete `AppDbContext`.
-- `AppDbContext` defines `Schemas`, `FieldDefinitions`, and `Users` DbSets. SQL Server is configured by `UseSqlServer` with `ConnectionStrings:DefaultConnection`.
-- `AppDbContextFactory` is the EF design-time factory; migrations use it when EF tooling needs a context. Keep it or replace it with an equivalent supported design-time configuration while preserving migrations.
-- Domain entities are plain EF-persisted data shapes. Domain contains no event behavior or domain service code.
-- `InMemorySchemaStore` is an unused static dictionary and is not the current persistence mechanism.
+- `SchemaService` reads and writes `dbo.Schemas` and `dbo.FieldDefinitions` with Dapper and `ConnectionStrings:DefaultConnection`.
+- `scripts/initialize-database.sql` creates the `Daas` database, schema tables, cascade FK, and field schema index; it drops the obsolete `Users` table when present.
+- Schema and field data types are simple data shapes with no event behavior or domain services.
 
-The Infrastructure migration history includes `InitialCreate` for Users and `InitialSchema` for Schemas/FieldDefinitions. The current snapshot contains only Users, although the later migration designer includes schema entities. This is a model/snapshot inconsistency to inspect when EF migrations are next changed; do not delete or rewrite migration history as part of the architectural move.
+EF migration history was removed on the Dapper branch. Database initialization is now performed by the checked-in SQL script.
 
 ## Factory and random value generation (must preserve)
 
-`FieldGeneratorFactory` is in `Daas.Application/Users/Queries/FieldGeneratorFactory.cs`. It selects an `IFieldValueGenerator` implementation for Int, String, Boolean, Float, Character, Guid, Date, and Double. Those implementations are `IntGenerator`, `StringGenerator`, `BooleanGenerator`, `FloatGenerator`, `CharacterGenerator`, `GuidGenerator`, `DateGenerator`, and `DoubleGenerator` in the same folder. The factory receives the singleton `Random` through DI; schema generation, mock generation, and legacy payload generation call it.
+`FieldGeneratorFactory` is in `Daas.Api/Generation/FieldGeneratorFactory.cs`. It selects an `IFieldValueGenerator` implementation for Int, String, Boolean, Float, Character, Guid, Date, and Double. Those implementations are `IntGenerator`, `StringGenerator`, `BooleanGenerator`, `FloatGenerator`, `CharacterGenerator`, `GuidGenerator`, `DateGenerator`, and `DoubleGenerator` in the same folder. The factory receives the singleton `Random` through DI; schema data generation calls it.
 
 Preserve the factory's mapping, random source/lifetime, generated ranges/formats, and endpoint serialization behavior during migration. Its location and namespace may change if all references are updated. The current switch has no default arm for out-of-range enum values; behavior for invalid input is an unhandled switch exception today.
 

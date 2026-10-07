@@ -1,5 +1,21 @@
-# data-as-a-service
+# Data as a Service
 
-checking fork vs clone
-contributer vs collaborator
-checking actions workflow ci/cd 
+The application stores user-defined schemas and generates dummy records from a stored schema. Schema persistence uses Dapper and SQL Server.
+
+## Initialize SQL Server
+
+Run the idempotent initialization script with `sqlcmd`:
+
+```powershell
+sqlcmd -S "<sql-server>" -E -i scripts/initialize-database.sql
+```
+
+The script creates the `Daas` database when needed, creates the schema tables when missing, and removes the obsolete `Users` table. The connecting account needs permission to create the database and change its tables. The application connection string is in `src/servers/Web/Daas.Api/appsettings.json`; update its server name and credentials for your environment.
+
+## Run the API
+
+```powershell
+dotnet run --project src/servers/Web/Daas.Api/Daas.Api.csproj
+```
+
+The API provides schema create/list/get/delete endpoints and `GET /api/schema/{id}/data/{howmany}` to generate the requested number of records. Swagger is enabled at `/swagger`.
