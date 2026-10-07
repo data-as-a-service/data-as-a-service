@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { GenerateDataPage } from '../features/generation/GenerateDataPage';
 import { SchemaListPage } from '../features/schemas/SchemaListPage';
+import { ApiLinksPage } from '../features/links/ApiLinksPage';
 
-type Page = 'schemas' | 'generate';
+type Page = 'schemas' | 'generate' | 'links';
 
 export function App() {
   const [page, setPage] = useState<Page>('schemas');
@@ -17,12 +18,13 @@ export function App() {
       <nav aria-label="Main navigation">
         <button className={`nav-item ${page === 'schemas' ? 'active' : ''}`} onClick={() => setPage('schemas')}><span className="nav-icon">▦</span>Schemas</button>
         <button className={`nav-item ${page === 'generate' ? 'active' : ''}`} onClick={() => goGenerate()}><span className="nav-icon">✳</span>Generate data</button>
+        <button className={`nav-item ${page === 'links' ? 'active' : ''}`} onClick={() => setPage('links')}><span className="nav-icon">↗</span>API links</button>
       </nav>
       <div className="sidebar-bottom"><div className="sidebar-help-mark">?</div><div><strong>Need a hand?</strong><span>Explore the API docs</span></div><a href="/swagger" target="_blank" rel="noreferrer" aria-label="Open API documentation">↗</a></div>
     </aside>
     <main className="main-area">
-      <header className="topbar"><div className="breadcrumb">Workspace <span>/</span> <strong>{page === 'schemas' ? 'Schemas' : 'Generate data'}</strong></div><div className="topbar-right"><span className="environment-dot" /> Local workspace</div></header>
-      <div className="content-area">{page === 'schemas' ? <SchemaListPage onGenerate={goGenerate} /> : <GenerateDataPage initialSchemaId={schemaId} onBrowseSchemas={() => setPage('schemas')} />}</div>
+      <header className="topbar"><div className="breadcrumb">Workspace <span>/</span> <strong>{page === 'schemas' ? 'Schemas' : page === 'links' ? 'API links' : 'Generate data'}</strong></div><div className="topbar-right"><span className="environment-dot" /> Local workspace</div></header>
+      <div className="content-area">{page === 'schemas' ? <SchemaListPage onGenerate={goGenerate} /> : page === 'links' ? <ApiLinksPage /> : <GenerateDataPage initialSchemaId={schemaId} onBrowseSchemas={() => setPage('schemas')} />}</div>
       <footer className="footer"><span>DAAS CONSOLE</span><span>Powered by your schema definitions</span></footer>
     </main>
   </div>;
