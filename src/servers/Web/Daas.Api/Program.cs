@@ -72,6 +72,7 @@ builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddSingleton<FieldGeneratorFactory>();
 builder.Services.AddSingleton<Random>();
 builder.Services.AddScoped<SchemaService>();
+builder.Services.AddScoped<UserService>();
 
 // 🔹 Build AFTER all services are registered
 var app = builder.Build();
