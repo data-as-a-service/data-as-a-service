@@ -54,6 +54,7 @@
 
 using Daas.Application;
 using Daas.Application.Users.Queries;
+using Daas.Api.Services;
 using Daas.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -70,6 +71,7 @@ builder.Services.AddMediatR(cfg =>
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddSingleton<FieldGeneratorFactory>();
 builder.Services.AddSingleton<Random>();
+builder.Services.AddScoped<SchemaService>();
 
 // 🔹 Build AFTER all services are registered
 var app = builder.Build();
