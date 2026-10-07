@@ -28,7 +28,7 @@ Schema creation and details can be views or dialogs within the Schemas area. The
 | `PUT /api/schema/{id}/links/{linkId}` | Update count and expiry |
 | `DELETE /api/schema/{id}/links/{linkId}` | Revoke a link |
 | `POST /api/schema/{id}/links/{linkId}/rotate` | Replace the bearer key and return a new URL |
-| `GET /api/mock/{publicKey}` | Generate the configured record count; optional bounded `count` override |
+| `GET /api/v1/data/{publicKey}` | Generate the configured record count; optional bounded `count` override |
 
 The current API uses numeric `FieldTypes` values in create requests. The generator factory supports only a subset of those values, and its enum numbering does not align with the schema enum. Until that backend contract is corrected, the frontend should offer only types that are currently known to generate correctly, and this limitation should be revisited as a backend task.
 
