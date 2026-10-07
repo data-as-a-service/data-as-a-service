@@ -1,10 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { schemaApi, type SchemaField } from '../../app/api';
 import { ErrorState } from '../../shared/States';
-
-// Only schema INT (0) aligns with a generator mapping (FieldType.Int = 0).
-// The stored and generator enums currently diverge for the other values.
-const GENERATABLE_TYPES = [{ label: 'Integer', value: 0 }];
+import { GENERATABLE_FIELD_TYPES } from './schemaFieldTypes';
 
 type Props = { onCreated: () => Promise<void> };
 
@@ -44,7 +41,7 @@ export function CreateSchemaForm({ onCreated }: Props) {
     <div className="fields-heading"><span className="input-label">Fields</span><span className="muted">{fields.length} added</span></div>
     <div className="field-editor-list">{fields.map((field, index) => <div className="field-editor" key={index}>
       <input className="text-input" aria-label={`Field ${index + 1} name`} value={field.fieldName} onChange={event => updateField(index, { fieldName: event.target.value })} placeholder="Field name" maxLength={120} required />
-      <select className="select-input" aria-label={`Field ${index + 1} type`} value={field.fieldType} onChange={event => updateField(index, { fieldType: Number(event.target.value) })}>{GENERATABLE_TYPES.map((type, typeIndex) => <option key={`${type.label}-${typeIndex}`} value={type.value}>{type.label}</option>)}</select>
+      <select className="select-input" aria-label={`Field ${index + 1} type`} value={field.fieldType} onChange={event => updateField(index, { fieldType: Number(event.target.value) })}>{GENERATABLE_FIELD_TYPES.map(type => <option key={type.value} value={type.value}>{type.label}</option>)}</select>
       <button type="button" className="icon-button remove-field" aria-label={`Remove field ${index + 1}`} disabled={fields.length === 1} onClick={() => setFields(current => current.filter((_, i) => i !== index))}>×</button>
     </div>)}</div>
     <button type="button" className="add-field" onClick={() => setFields(current => [...current, { fieldName: '', fieldType: 0 }])}><span>＋</span> Add field</button>

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { schemaApi, type Schema } from '../../app/api';
 import { EmptyState, ErrorState, LoadingState } from '../../shared/States';
 import { CreateSchemaForm } from './CreateSchemaForm';
+import { fieldTypeName } from './schemaFieldTypes';
 
 type Props = { onGenerate: (id: string) => void };
 
@@ -66,8 +67,4 @@ export function SchemaListPage({ onGenerate }: Props) {
       </section>
     </div>}
   </>;
-}
-
-export function fieldTypeName(value: number) {
-  return ['INT', 'FLOAT', 'DOUBLE', 'DECIMAL', 'CHAR', 'STRING', 'BOOLEAN', 'DATE', 'TIME', 'DATETIME', 'GUID', 'UUID', 'BYTE', 'SHORT', 'USHORT', 'LONG', 'LONGLONG', 'ULONG', 'SBYTE', 'BINARY'][value] ?? `TYPE ${value}`;
 }

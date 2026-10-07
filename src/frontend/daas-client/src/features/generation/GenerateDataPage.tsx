@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { schemaApi, type Schema } from '../../app/api';
 import { EmptyState, ErrorState, LoadingState } from '../../shared/States';
-import { fieldTypeName } from '../schemas/SchemaListPage';
+import { fieldTypeName } from '../schemas/schemaFieldTypes';
 
 type Props = { initialSchemaId: string; onBrowseSchemas: () => void };
 

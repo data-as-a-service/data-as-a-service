@@ -23,7 +23,7 @@ Schema creation and details can be views or dialogs within the Schemas area. The
 | `DELETE /api/schema/{id}` | Delete a schema; returns `204` or `404` |
 | `GET /api/schema/{id}/data/{howmany}` | Generate the requested number of records; returns an array or `404` |
 
-The current API uses numeric `FieldTypes` values in create requests. The generator factory supports only a subset of those values, and its enum numbering does not align with the schema enum. Until that backend contract is corrected, the frontend should offer only types that are currently known to generate correctly, and this limitation should be revisited as a backend task.
+The API uses numeric `FieldTypes` values in create requests. The supported values are explicitly numbered to preserve existing stored schemas and match the existing generator factory: `INT`, `FLOAT`, `BOOLEAN`, `STRING`, `CHAR`, `GUID`, `DATE`, and `DOUBLE`. The frontend offers these eight types. Other schema enum values remain unsupported and generation requests for them return `400 Bad Request`. Keep these numeric assignments stable; changing persisted meanings requires a database migration.
 
 ## Page behavior
 
