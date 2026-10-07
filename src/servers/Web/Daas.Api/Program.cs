@@ -1,6 +1,6 @@
 using Daas.Api.Services;
-using Daas.Application.Users.Queries;
-using Daas.Infrastructure;
+using Daas.Api.Generation;
+using Daas.Api.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -8,7 +8,7 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddDataAccess(builder.Configuration);
 builder.Services.AddSingleton<FieldGeneratorFactory>();
 builder.Services.AddSingleton<Random>();
 builder.Services.AddScoped<SchemaService>();

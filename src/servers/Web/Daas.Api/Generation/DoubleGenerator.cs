@@ -1,4 +1,4 @@
-﻿using Daas.Application.Users.Queries;
+﻿using Daas.Api.Generation;
 
 public class DoubleGenerator : IFieldValueGenerator
 {

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Reflection.Emit;
 using System.Text;
 
-namespace Daas.Application.Users.Queries
+namespace Daas.Api.Generation
 {
     public class FieldGeneratorFactory
     {

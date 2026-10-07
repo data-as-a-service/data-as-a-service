@@ -1,5 +1,5 @@
-using Daas.Application.DTO.RequestDTO;
-using Daas.Application.Users.Queries;
+using Daas.Api.Contracts;
+using Daas.Api.Generation;
 using Daas.Domain.Entities;
 using Daas.Infrastructure.Persistence;
 using System.Collections;

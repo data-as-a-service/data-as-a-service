@@ -2,19 +2,20 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace Daas.Application.Users.Queries
+namespace Daas.Api.Generation
 {
-    public class IntGenerator:IFieldValueGenerator
+    public class StringGenerator:IFieldValueGenerator
     {
+
         private readonly Random random;
-        public IntGenerator(Random _random)
+        public StringGenerator(Random _random)
         {
             random = _random;
         }
         public object Generator()
         {
-            return random.Next(0,2000);
-            
+            string g = "string";
+            return g + "_" + random.Next(0, 20000);
         }
     }
 }

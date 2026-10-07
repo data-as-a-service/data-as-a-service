@@ -3,8 +3,5 @@
   <Folder Name="/src/servers/" />
   <Folder Name="/src/servers/Web/">
     <Project Path="src/servers/Web/Daas.Api/Daas.Api.csproj" />
-    <Project Path="src/servers/Web/Daas.Application/Daas.Application.csproj" />
-    <Project Path="src/servers/Web/Daas.Domain/Daas.Domain.csproj" />
-    <Project Path="src/servers/Web/Daas.Infrastructure/Daas.Infrastructure.csproj" />
   </Folder>
 </Solution>

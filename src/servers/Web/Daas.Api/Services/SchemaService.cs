@@ -1,4 +1,4 @@
-using Daas.Application.Users.Queries;
+using Daas.Api.Generation;
 using Daas.Domain.Entities;
 using Daas.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;

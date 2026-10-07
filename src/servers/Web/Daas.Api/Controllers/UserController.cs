@@ -1,5 +1,5 @@
 using Daas.Api.Services;
-using Daas.Application.DTO.RequestDTO;
+using Daas.Api.Contracts;
 using Daas.Domain.Entities;
 using Microsoft.AspNetCore.Mvc;
 using System.Collections;
