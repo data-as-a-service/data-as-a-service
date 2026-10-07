@@ -108,9 +108,7 @@ public class SchemaService
 
             foreach (var field in schema.Fields)
             {
-                var value = _factory
-                    .Get((FieldType)field.FieldType)
-                    .Generator();
+                var value = _factory.Get(field.FieldType).Generator();
 
                 row.Add(field.FieldName, value);
             }
