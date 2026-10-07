@@ -113,6 +113,18 @@ Run the smallest relevant tests during development. Before declaring a feature c
 
 Document important permanent product and architecture decisions in the repository rather than relying on chat history. Avoid documentation for trivial implementation details.
 
+# API Links MVP Decisions
+
+The first API-link release is a simple public mock-data endpoint over an existing flat schema. `Schema` is the current product's data definition. An API link references a schema and is independent of users/projects because identity, projects, and authentication do not exist yet. Do not invent user ownership in this phase. Revisit project ownership when authentication and project management become concrete product work.
+
+Links are public bearer URLs using a cryptographically random, unguessable key. Persist only a hash of the key; show the full URL only at creation/rotation. If the user loses a URL, an explicit recovery action rotates the key and returns a replacement, invalidating old copies. Links are revocable and rotatable. They do not expire by default in the MVP. One schema may have multiple links.
+
+The public endpoint initially supports GET and returns a JSON array matching the schema's flat fields, reusing the existing `FieldGeneratorFactory`. Output is random on each request. Link configuration sets a default record count, with any caller override bounded by server validation. Do not add deterministic seeds, delays, arbitrary status codes, configurable response headers, query-driven field rules, nested schemas, or AI generation to this release.
+
+Use ordinary HTTP status behavior for invalid, missing, revoked, or expired links. Rate limiting is required for a public endpoint and should use the simplest ASP.NET Core-supported mechanism available in the deployed runtime. Do not persist per-request usage logs in the MVP; revisit lightweight aggregate metrics if usage visibility becomes necessary. Schema deletion must cascade-delete/revoke its links.
+
+Keep this feature in the existing controller → service → Dapper/SQL Server flow. Add durable product decisions and deferred improvements to `docs/product-roadmap.md` (and an ADR when a durable architecture choice merits one). Do not commit implementation changes directly on `main`; use the current feature branch or an explicitly authorized branch workflow.
+
 # Final Principle
 
 The goal is to ship a useful DaaS product. Prefer simple, understandable, working solutions over complicated designs that are only theoretically scalable, unless there is a concrete requirement for the latter.

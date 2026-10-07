@@ -40,9 +40,15 @@ The current generator is a starting point for deterministic generation, but is n
 
 Ship a usable schema workflow before taking on AI or nested structures. The proposed MVP is a React interface to create, list, view, and delete flat schemas and preview generated records, backed by repeatable deterministic generation. Define validation, record-count limits, errors, and seed behavior as part of the API contract. Add focused tests for generator repeatability and important API behavior.
 
-### API links
+### API links: MVP decisions
 
-Before implementing links, decide whether a link identifies a schema alone or includes generation options, how count/seed parameters work, whether links are public or protected, and whether links can be revoked or rotated. Persist link configuration only if it is needed beyond deriving a route from an existing schema ID. Add rate limiting or authentication only when the selected access policy calls for it.
+The first API-link release treats the existing `Schema` as the user's data definition. Creating a link references that schema; it does not copy its fields. Links are standalone because the product has no users, projects, authentication, or authorization model. Project ownership is deferred until those capabilities are designed together; adding a user ID now would be fictitious ownership without an identity system.
+
+Links are public bearer URLs using a high-entropy key. Store a hash of the key and show the full URL only when a link is created or rotated. Because the plaintext key cannot be recovered, asking for a lost URL explicitly rotates the key and invalidates old copies. Links can be revoked and rotated, do not expire by default, and multiple links may reference the same schema. Deleting a schema deletes its links.
+
+The initial serving endpoint is `GET /api/mock/{publicKey}` and returns a JSON array of flat records using the existing field generator. Data is random on each request. Each link stores a default record count, and callers may override it within a server-enforced bound. The MVP has no deterministic seed, delay simulation, arbitrary response statuses, custom headers, query-driven generation, or per-request usage log. A public route needs basic rate limiting. Nested data and AI generation remain separate future work.
+
+These are the product defaults for initial implementation. If product use shows a need, revisit project ownership, optional expiry, deterministic generation, query parameters, richer response simulation, aggregate usage metrics, and authentication or scoped/private links. Document each substantive architecture decision in an ADR when implementation begins.
 
 ### Nested JSON
 
@@ -57,21 +63,21 @@ Keep deterministic generation available independently. The main API should own H
 1. **Confirm the MVP contract.** Settle schema validation, record limits, repeatable seed behavior, error responses, and whether API links belong in the first release. Keep the initial schema flat unless nested input is explicitly promoted into the MVP.
 2. **Make deterministic generation repeatable.** Extend the existing generation path with an explicit seed/option contract while preserving current factory mappings and default behavior where practical. Add focused tests for repeatability, supported types, and API behavior.
 3. **Build the React MVP.** Create a small feature-oriented React client for schema management and data preview. Consume the existing API and adjust backend contracts only where the agreed MVP requires it. Configure local development and deployment for the client without introducing unnecessary state-management or architecture dependencies.
-4. **Add generated API links.** After deciding URL shape and access policy, persist link configuration if required and provide a route that resolves configuration to a schema and generated JSON. Add access controls and operational limits to match that policy.
+4. **Add generated API links.** Persist link records referencing schemas, add create/list/revoke/rotate management endpoints, and expose `GET /api/mock/{publicKey}`. Use public high-entropy bearer keys, bounded record counts, basic rate limiting, and the existing random generator. Defer identity/project ownership until account and project workflows exist.
 5. **Add nested JSON schema support.** Validate uploaded JSON, convert it into a recursive schema/tree, persist it using a suitable representation, and generate data with the same nested object/array shape.
 6. **Add optional Ollama generation.** Implement the separate optional provider/integration with bounded requests and deterministic fallback. Verify that the main API remains operational with Ollama unavailable.
 7. **Harden deployment.** Once the target environment is selected, add only the needed database/service orchestration, configuration, health checks, and operational guidance.
 
 ## Explicitly defer
 
-Do not build Ollama integration, a standalone generation microservice, nested JSON support, public API links, authentication, or a larger architectural split as part of the initial MVP by assumption. Revisit each when its preceding product decision or phase is approved. Do not introduce CQRS/MediatR, event sourcing, Clean/Onion Architecture, or unnecessary repository abstractions.
+Defer Ollama integration, a standalone generation microservice, nested JSON, user/project identity and ownership, link expiry by default, deterministic/seeded responses, configurable delays/status/headers, query-driven generation, detailed usage logs, and a larger architectural split. These are useful extensions but add product, security, schema, or operational complexity that is not needed to make the initial public link workflow usable. Revisit based on concrete usage and deployment needs. Do not introduce CQRS/MediatR, event sourcing, Clean/Onion Architecture, or unnecessary repository abstractions.
 
 ## Dependencies and database evolution
 
 The current API already depends on ASP.NET Core, Dapper, Microsoft.Data.SqlClient, and SQL Server. The React phase will need a JavaScript package/build workflow and a chosen way to serve or deploy the client; select the smallest setup that fits the deployment target. Automated tests will require a test project and test framework, selected when that phase is implemented. Ollama integration will eventually require an HTTP client/configuration and an Ollama service/runtime, but the API must treat it as optional.
 
-No database change is inherently required for a React client or seeded generation while generation options are request-scoped. API links may need a table if their configuration/lifecycle must be stored. Nested schemas will require schema persistence beyond the current flat `FieldDefinitions`; choose between recursive relational nodes and a versioned JSON document after defining query/update needs. Do not add speculative tables now.
+API links require a `dbo.ApiLinks` table because they have independent keys and lifecycle. The MVP table should store link ID, schema ID, key hash, active/revoked state, creation time, optional expiry, and default record count, with a unique key-hash index and cascading schema foreign key. Do not add users/projects or usage-log tables until those capabilities are selected. Nested schemas will require persistence beyond flat `FieldDefinitions`; choose recursive relational nodes or a versioned JSON document after defining query/update needs.
 
 ## Approval boundary
 
-This roadmap proposes work in phases and records existing functionality. Product implementation should begin only after the user approves the plan and the relevant phase scope.
+This roadmap records the selected API-link MVP scope and deferred improvements. Implementation is authorized for the feature phase; work should follow the repository Git workflow and be committed in reviewable units.
