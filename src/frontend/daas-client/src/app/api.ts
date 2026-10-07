@@ -16,6 +16,17 @@ export type NewSchema = {
   fields: Pick<SchemaField, 'fieldName' | 'fieldType'>[];
 };
 
+export type ApiLink = {
+  id: string;
+  schemaId: string;
+  isActive: boolean;
+  createdAt: string;
+  expiresAt: string | null;
+  defaultRecordCount: number;
+};
+
+export type ApiLinkWithUrl = ApiLink & { url: string };
+
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -50,4 +61,20 @@ export const schemaApi = {
   generate: (id: string, count: number) => request<Record<string, unknown>[]>(
     `/api/schema/${encodeURIComponent(id)}/data/${count}`,
   ),
+};
+
+export const apiLinkApi = {
+  list: (schemaId: string) => request<ApiLink[]>(`/api/schema/${encodeURIComponent(schemaId)}/links`),
+  create: (schemaId: string, defaultRecordCount: number, expiresAt: string | null) =>
+    request<ApiLinkWithUrl>(`/api/schema/${encodeURIComponent(schemaId)}/links`, {
+      method: 'POST', body: JSON.stringify({ defaultRecordCount, expiresAt }),
+    }),
+  update: (schemaId: string, linkId: string, defaultRecordCount: number, expiresAt: string | null) =>
+    request<ApiLink>(`/api/schema/${encodeURIComponent(schemaId)}/links/${encodeURIComponent(linkId)}`, {
+      method: 'PUT', body: JSON.stringify({ defaultRecordCount, expiresAt }),
+    }),
+  revoke: (schemaId: string, linkId: string) =>
+    request<void>(`/api/schema/${encodeURIComponent(schemaId)}/links/${encodeURIComponent(linkId)}`, { method: 'DELETE' }),
+  rotate: (schemaId: string, linkId: string) =>
+    request<ApiLinkWithUrl>(`/api/schema/${encodeURIComponent(schemaId)}/links/${encodeURIComponent(linkId)}/rotate`, { method: 'POST' }),
 };

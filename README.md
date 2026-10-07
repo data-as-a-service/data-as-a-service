@@ -18,7 +18,7 @@ The script creates the `Daas` database when needed, creates the schema tables wh
 dotnet run --project src/servers/Web/Daas.Api/Daas.Api.csproj
 ```
 
-The API provides schema create/list/get/delete endpoints and `GET /api/schema/{id}/data/{howmany}` to generate the requested number of records. Swagger is enabled at `/swagger`.
+The API provides schema create/list/get/delete endpoints and `GET /api/schema/{id}/data/{howmany}` to generate the requested number of records. API links can be managed at `/api/schema/{id}/links`; the public generated-data endpoint is `GET /api/mock/{publicKey}` with an optional bounded `count` query parameter. Run the idempotent database initialization script to create the `dbo.ApiLinks` table. Swagger is enabled at `/swagger`.
 
 ## Run the API and React frontend
 

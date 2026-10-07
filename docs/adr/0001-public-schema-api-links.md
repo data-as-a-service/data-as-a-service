@@ -20,7 +20,7 @@ The application stores flat schemas and generates random records through `Schema
 
 ## Consequences
 
-The database needs an `ApiLinks` table with a schema foreign key, unique key hash, active state, creation/optional expiry timestamps, and default count. Public bearer links can be shared by anyone who obtains the URL, so revocation and rate limiting are part of the initial feature. Existing schema edits affect all links to that schema. Recovering a lost URL invalidates prior copies because only a hash is stored.
+The database needs an `ApiLinks` table with a schema foreign key, unique key hash, active state, creation/optional expiry timestamps, and default count. Public bearer links can be shared by anyone who obtains the URL, so revocation and rate limiting are part of the initial feature. The initial application has no authentication, so link management currently has the same unauthenticated trust boundary as existing schema CRUD; adding account/project access control is required before treating management as a multi-tenant service. Existing schema edits affect all links to that schema. Recovering a lost URL invalidates prior copies because only a hash is stored.
 
 ## Deferred
 
