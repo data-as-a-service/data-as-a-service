@@ -2,7 +2,7 @@
 
 Date: 2026-10-08
 
-This document records the current product baseline and release plan. V1's core workflow is schema creation → API-link creation → external GET returning generated JSON. The React MVP, public API-link workflow, and repeatable database setup are implemented. The immediate focus is verifying and releasing that core workflow. Authentication/authorization, nested JSON, and Ollama are add-ons after the core product is live; access control remains the final planned feature phase as requested.
+This document records the current product baseline and release plan. V1's core workflow is schema creation → API-link creation → external GET returning generated JSON. The React MVP, public API-link workflow, and repeatable database setup are implemented. The immediate focus is verifying and releasing that core workflow. Authentication/authorization and nested JSON remain future add-ons; access control remains the final planned feature phase as requested.
 
 ## Current implementation
 
@@ -26,7 +26,7 @@ The API currently exposes:
 
 The database uses `dbo.Schemas`, `dbo.FieldDefinitions`, and `dbo.ApiLinks`; schema-owned fields and links cascade-delete. `scripts/initialize-database.sql` creates the base schema; numbered scripts in `scripts/database-updates` add later schema changes and record applied IDs in `dbo.SchemaMigrations`. `scripts/setup-database.ps1` runs both steps for fresh or existing databases. The API does not apply DDL automatically at startup.
 
-The React client supports schema management, data preview, and API-link management. Swagger is enabled. There is no authentication/authorization or automated test project. A multi-stage Dockerfile builds the API, though a repeatable deployed setup still needs verification. JSON import, nested JSON generation, and Ollama integration are not implemented.
+The React client supports schema management, data preview, and API-link management. Swagger is enabled. There is no authentication/authorization. A multi-stage Dockerfile builds the API, though a repeatable deployed setup still needs verification. JSON import and nested JSON generation are not implemented. API links can optionally use Ollama with random-generator fallback.
 
 ## Reusable foundation
 
@@ -60,7 +60,9 @@ Define accepted JSON shapes and validation rules first. Nested objects and array
 
 ### Optional Ollama generation
 
-Keep deterministic generation available independently. The main API should own HTTP handling, schema/link persistence, validation, and provider selection. A narrow generation boundary can accept a schema and generation options and return JSON. The deterministic generator remains the normal provider; an Ollama integration can be added later as an optional component behind that boundary. Configure timeouts and treat connection failures, unavailable service, and provider errors as reasons to fall back to deterministic generation. The core API must start and serve deterministic requests when Ollama is absent.
+API links can select the existing random generator or optional Ollama generation. Ollama runs as an external dependency accessed by the API over HTTP; public clients call only the DaaS API. Configure it with `Ollama__Enabled`, `Ollama__BaseUrl`, `Ollama__Model`, and `Ollama__TimeoutSeconds`. It is disabled by default. The API validates the returned flat JSON array against the linked schema and falls back to the existing random `FieldGeneratorFactory` output after Ollama errors, timeouts, or invalid output. The existing generator remains independent and is not seeded or repeatable.
+
+For local development, start Ollama and pull the chosen model (for example, `ollama pull llama3.2`). Apply database updates with `scripts/setup-database.ps1 -Server "<sql-server>"`, then set `Ollama__Enabled=true`, `Ollama__BaseUrl=http://localhost:11434`, `Ollama__Model=llama3.2`, and `Ollama__TimeoutSeconds=15` in the API process environment before running the API. Keep Ollama on a private development/deployment network; only the DaaS public endpoint is exposed to link consumers.
 
 ## Phased implementation plan
 
@@ -68,16 +70,16 @@ Keep deterministic generation available independently. The main API should own H
 2. **Add focused automated tests.** Cover schema CRUD and generated output, link creation/key secrecy/rotation/revocation/expiry/count limits, and migration rerun behavior. Use a real SQL Server integration target for persistence checks when available; keep unit tests independent of SQL Server.
 3. **Improve the core based on first-release feedback.** Prioritize data quality, schema/field validation, useful errors, and operational issues that block customers from completing the core workflow. Keep scope tied to observed usage.
 4. **Add nested JSON as an optional product extension.** Define supported object/array shapes, validation, migration, and generation behavior. It is not required to prove the flat-schema core.
-5. **Consider deterministic generation and optional Ollama.** Add repeatable seeds or AI-backed realistic values only for concrete user needs. Keep the existing generator working independently of Ollama.
+5. **Improve generation based on usage.** Per-link Ollama generation and random fallback are available. Repeatable seeded output, nested schemas, and richer realistic generation remain future work based on concrete needs.
 6. **Add authentication and authorization (last planned feature phase).** When flagged, decide user versus project ownership, protect schema and link-management routes, and keep public bearer URLs available for consumers.
 
 ## Explicitly defer
 
-Defer Ollama integration, a standalone generation microservice, nested JSON, account/project ownership and access control (planned as the last feature phase), link expiry by default, deterministic/seeded responses, configurable delays/status/headers, query-driven generation, detailed usage logs, and a larger architectural split. These are optional extensions, not prerequisites for the flat-schema V1 core. Revisit based on concrete usage and deployment needs. Do not introduce CQRS/MediatR, event sourcing, Clean/Onion Architecture, or unnecessary repository abstractions.
+Defer a standalone generation microservice, nested JSON, account/project ownership and access control (planned as the last feature phase), link expiry by default, deterministic/seeded responses, configurable delays/status/headers, query-driven generation, detailed usage logs, and a larger architectural split. These are optional extensions, not prerequisites for the flat-schema V1 core. Revisit based on concrete usage and deployment needs. Do not introduce CQRS/MediatR, event sourcing, Clean/Onion Architecture, or unnecessary repository abstractions.
 
 ## Dependencies and database evolution
 
-The API depends on ASP.NET Core, Dapper, Microsoft.Data.SqlClient, and SQL Server. The React client uses Vite and npm; deployment still needs a selected hosting/serving arrangement. Automated tests will require a test project and framework. Ollama integration would require an HTTP client/configuration and an Ollama service/runtime, but the API must treat it as optional.
+The API depends on ASP.NET Core, Dapper, Microsoft.Data.SqlClient, and SQL Server. The React client uses Vite and npm; deployment still needs a selected hosting/serving arrangement. Automated tests use a dedicated .NET test project. Ollama is an optional external runtime reached by HTTP; it is disabled by default and its URL, model, and timeout are supplied through deployment configuration.
 
 `dbo.ApiLinks` stores independent link keys and lifecycle. Ordered SQL updates in `scripts/database-updates` are applied with the explicit `scripts/setup-database.ps1` command and recorded in `dbo.SchemaMigrations`. Do not add user/project or usage-log tables until those capabilities are selected. Nested schemas will require persistence beyond flat `FieldDefinitions`; choose recursive relational nodes or a versioned JSON document after defining query/update needs.
 

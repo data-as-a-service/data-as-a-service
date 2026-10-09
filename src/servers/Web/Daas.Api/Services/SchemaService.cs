@@ -11,12 +11,14 @@ public class SchemaService
 {
     private readonly string _connectionString;
     private readonly FieldGeneratorFactory _factory;
+    private readonly OllamaDataGenerator _ollamaGenerator;
 
-    public SchemaService(IConfiguration configuration, FieldGeneratorFactory factory)
+    public SchemaService(IConfiguration configuration, FieldGeneratorFactory factory, OllamaDataGenerator ollamaGenerator)
     {
         _connectionString = configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException("The DefaultConnection connection string is not configured.");
         _factory = factory;
+        _ollamaGenerator = ollamaGenerator;
     }
 
     public Guid CreateSchema(Schema schema)
@@ -100,6 +102,25 @@ public class SchemaService
             return null;
         }
 
+        return GenerateData(schema, howmany);
+    }
+
+    public async Task<List<object>?> GenerateDataForLinkAsync(Guid id, int howmany, int generationMode, CancellationToken cancellationToken)
+    {
+        var schema = GetSchema(id);
+        if (schema is null) return null;
+
+        if (generationMode == 1)
+        {
+            var generated = await _ollamaGenerator.TryGenerateAsync(schema, howmany, cancellationToken);
+            if (generated is not null) return generated;
+        }
+
+        return GenerateData(schema, howmany);
+    }
+
+    private List<object> GenerateData(Schema schema, int howmany)
+    {
         var result = new List<object>();
 
         for (int i = 0; i < howmany; i++)

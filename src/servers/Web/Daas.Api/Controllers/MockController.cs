@@ -19,7 +19,7 @@ public class MockController : ControllerBase
 
     [HttpGet("{publicKey}")]
     [EnableRateLimiting("public-mock")]
-    public IActionResult Get(string publicKey, [FromQuery] int? count)
+    public async Task<IActionResult> Get(string publicKey, [FromQuery] int? count, CancellationToken cancellationToken)
     {
         if (!ApiLinkService.ValidPublicKey(publicKey)) return NotFound();
         var link = _linkService.GetActiveByKey(publicKey);
@@ -27,7 +27,7 @@ public class MockController : ControllerBase
         var recordCount = count ?? link.DefaultRecordCount;
         if (!ApiLinkService.ValidCount(recordCount))
             return BadRequest(new { error = $"Count must be between 1 and {ApiLinkService.MaxRecordCount}." });
-        var data = _schemaService.GenerateData(link.SchemaId, recordCount);
+        var data = await _schemaService.GenerateDataForLinkAsync(link.SchemaId, recordCount, link.GenerationMode, cancellationToken);
         return data is null ? NotFound() : Ok(data);
     }
 }

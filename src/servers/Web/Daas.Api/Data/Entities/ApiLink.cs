@@ -15,4 +15,6 @@ public class ApiLink
     public DateTime? ExpiresAt { get; set; }
 
     public int DefaultRecordCount { get; set; }
+
+    public int GenerationMode { get; set; }
 }
