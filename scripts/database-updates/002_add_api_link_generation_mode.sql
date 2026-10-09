@@ -28,8 +28,7 @@ BEGIN
               AND parent_object_id = OBJECT_ID(N'dbo.ApiLinks')
         )
         BEGIN
-            ALTER TABLE dbo.ApiLinks
-                ADD CONSTRAINT CK_ApiLinks_GenerationMode CHECK (GenerationMode IN (0, 1));
+            EXEC(N'ALTER TABLE dbo.ApiLinks ADD CONSTRAINT CK_ApiLinks_GenerationMode CHECK (GenerationMode IN (0, 1));');
         END;
 
         INSERT INTO dbo.SchemaMigrations (MigrationId) VALUES (N'002_add_api_link_generation_mode');
