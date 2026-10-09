@@ -32,7 +32,7 @@ public sealed class OllamaDataGenerator
                 model,
                 prompt,
                 stream = false,
-                format = "json"
+                format = BuildJsonSchema(schema, count)
             }, cancellationToken);
             response.EnsureSuccessStatusCode();
 
@@ -70,6 +70,38 @@ public sealed class OllamaDataGenerator
     {
         var fields = string.Join(", ", schema.Fields.Select(field => $"{JsonSerializer.Serialize(field.FieldName)}: {field.FieldType}"));
         return $"Return exactly {count} realistic JSON objects as an array. Each object must contain exactly these fields with values matching their types: {{{fields}}}. Return JSON only.";
+    }
+
+    private static object BuildJsonSchema(Schema schema, int count)
+    {
+        var properties = schema.Fields.ToDictionary(
+            field => field.FieldName,
+            field => (object)(field.FieldType switch
+            {
+                FieldTypes.INT => new { type = "integer" },
+                FieldTypes.FLOAT or FieldTypes.DOUBLE => new { type = "number" },
+                FieldTypes.BOOLEAN => new { type = "boolean" },
+                FieldTypes.GUID or FieldTypes.UUID => new { type = "string", format = "uuid" },
+                FieldTypes.DATE => new { type = "string", format = "date" },
+                FieldTypes.DATETIME => new { type = "string", format = "date-time" },
+                FieldTypes.CHAR => new { type = "string", minLength = 1, maxLength = 1 },
+                _ => new { type = "string" }
+            }),
+            StringComparer.Ordinal);
+
+        return new
+        {
+            type = "array",
+            minItems = count,
+            maxItems = count,
+            items = new
+            {
+                type = "object",
+                properties,
+                required = schema.Fields.Select(field => field.FieldName).ToArray(),
+                additionalProperties = false
+            }
+        };
     }
 
     public static List<object>? TryValidateOutput(string json, Schema schema, int count)
