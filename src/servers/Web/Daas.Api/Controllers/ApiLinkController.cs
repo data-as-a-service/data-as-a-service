@@ -62,7 +62,7 @@ public class ApiLinkController : ControllerBase
         link.DefaultRecordCount);
 
     private CreatedApiLinkResponse CreatedResponse(Data.Entities.ApiLink link, string key) => new(
-        link.Id, link.SchemaId, $"{Request.Scheme}://{Request.Host}/api/mock/{key}",
+        link.Id, link.SchemaId, $"{Request.Scheme}://{Request.Host}/api/v1/data/{key}",
         link.IsActive, DateTime.SpecifyKind(link.CreatedAt, DateTimeKind.Utc),
         link.ExpiresAt.HasValue ? DateTime.SpecifyKind(link.ExpiresAt.Value, DateTimeKind.Utc) : null,
         link.DefaultRecordCount);

@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.RateLimiting;
 namespace Daas.Api.Controllers;
 
 [ApiController]
-[Route("api/mock")]
+[Route("api/v1/data")]
 public class MockController : ControllerBase
 {
     private readonly ApiLinkService _linkService;

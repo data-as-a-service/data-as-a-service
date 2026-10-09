@@ -28,7 +28,7 @@ Schema creation and details can be views or dialogs within the Schemas area. The
 | `PUT /api/schema/{id}/links/{linkId}` | Update count and expiry |
 | `DELETE /api/schema/{id}/links/{linkId}` | Revoke a link |
 | `POST /api/schema/{id}/links/{linkId}/rotate` | Replace the bearer key and return a new URL |
-| `GET /api/mock/{publicKey}` | Generate the configured record count; optional bounded `count` override |
+| `GET /api/v1/data/{publicKey}` | Generate the configured record count; optional bounded `count` override |
 
 The API uses numeric `FieldTypes` values in create requests. The supported values are explicitly numbered to preserve existing stored schemas and match the existing generator factory: `INT`, `FLOAT`, `BOOLEAN`, `STRING`, `CHAR`, `GUID`, `DATE`, and `DOUBLE`. The frontend offers these eight types. Other schema enum values remain unsupported and generation requests for them return `400 Bad Request`. Keep these numeric assignments stable; changing persisted meanings requires a database migration.
 

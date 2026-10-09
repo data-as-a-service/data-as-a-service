@@ -18,7 +18,7 @@ The script uses Windows integrated authentication and requires permission to cre
 dotnet run --project src/servers/Web/Daas.Api/Daas.Api.csproj
 ```
 
-The API provides schema create/list/get/delete endpoints and `GET /api/schema/{id}/data/{howmany}` to generate the requested number of records. API links can be managed at `/api/schema/{id}/links`; the public generated-data endpoint is `GET /api/mock/{publicKey}` with an optional bounded `count` query parameter. Use the database setup command above to apply the `dbo.ApiLinks` update. Swagger is enabled at `/swagger`.
+The API provides schema create/list/get/delete endpoints and `GET /api/schema/{id}/data/{howmany}` to generate the requested number of records. API links can be managed at `/api/schema/{id}/links`; the V1 public data endpoint is `GET /api/v1/data/{publicKey}` with an optional bounded `count` query parameter. Use the database setup command above to apply the `dbo.ApiLinks` update. Swagger is enabled at `/swagger`.
 
 ## Run the API and React frontend
 

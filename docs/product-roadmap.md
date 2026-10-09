@@ -2,7 +2,7 @@
 
 Date: 2026-10-08
 
-This document records the current product baseline and the next implementation priorities. The schema, generation, React MVP, and public API-link workflows are implemented. The next priority is reliable database initialization and upgrades; access control is reserved for the final launch-readiness phase as requested.
+This document records the current product baseline and release plan. V1's core workflow is schema creation → API-link creation → external GET returning generated JSON. The React MVP, public API-link workflow, and repeatable database setup are implemented. The immediate focus is verifying and releasing that core workflow. Authentication/authorization, nested JSON, and Ollama are add-ons after the core product is live; access control remains the final planned feature phase as requested.
 
 ## Current implementation
 
@@ -20,7 +20,7 @@ The API currently exposes:
 | `GET/POST /api/schema/{id}/links` | Lists/creates links for a schema |
 | `PUT/DELETE /api/schema/{id}/links/{linkId}` | Updates/revokes a link |
 | `POST /api/schema/{id}/links/{linkId}/rotate` | Rotates the bearer key and returns a replacement URL |
-| `GET /api/mock/{publicKey}` | Returns generated JSON for an active link; optional bounded `count` override |
+| `GET /api/v1/data/{publicKey}` | Returns generated JSON for an active link; optional bounded `count` override |
 
 `FieldGeneratorFactory` maps Int, String, Boolean, Float, Character, Guid, Date, and Double to the existing generators. A singleton `Random` is injected into the factory. Values are random; generation is not repeatable from a request seed. The stored field type enum has more values than the factory supports.
 
@@ -50,7 +50,7 @@ The first API-link release treats the existing `Schema` as the user's data defin
 
 Links are public bearer URLs using a high-entropy key. Store a hash of the key and show the full URL only when a link is created or rotated. Because the plaintext key cannot be recovered, asking for a lost URL explicitly rotates the key and invalidates old copies. Links can be revoked and rotated, do not expire by default, and multiple links may reference the same schema. Deleting a schema deletes its links.
 
-The initial serving endpoint is `GET /api/mock/{publicKey}` and returns a JSON array of flat records using the existing field generator. Data is random on each request. Each link stores a default record count, and callers may override it within a server-enforced bound. The MVP has no deterministic seed, delay simulation, arbitrary response statuses, custom headers, query-driven generation, or per-request usage log. A public route needs basic rate limiting. Nested data and AI generation remain separate future work.
+V1 serves `GET /api/v1/data/{publicKey}` and returns a JSON array of flat records using the existing field generator. Data is random on each request. Each link stores a default record count, and callers may override it within a server-enforced bound. The MVP has no deterministic seed, delay simulation, arbitrary response statuses, custom headers, query-driven generation, or per-request usage log. A public route needs basic rate limiting. Nested data and AI generation remain separate future work.
 
 These are the product defaults for initial implementation. If product use shows a need, revisit project ownership, optional expiry, deterministic generation, query parameters, richer response simulation, aggregate usage metrics, and authentication or scoped/private links. Document each substantive architecture decision in an ADR when implementation begins.
 
@@ -64,16 +64,16 @@ Keep deterministic generation available independently. The main API should own H
 
 ## Phased implementation plan
 
-1. **Make database updates reliable (completed).** `scripts/setup-database.ps1` initializes a new or existing SQL Server database, applies ordered incremental migrations, tracks applied migration IDs, and can be safely rerun. The API does not apply DDL automatically at startup.
+1. **Release the V1 core workflow.** Verify schema creation, public link creation/copying, and external GET generation end to end. Smoke-test a fresh database and an existing database using `scripts/setup-database.ps1`. The deployment owner handles hosting/container work; share the database setup, runtime connection string, public URL/proxy, and rate-limit details with them.
 2. **Add focused automated tests.** Cover schema CRUD and generated output, link creation/key secrecy/rotation/revocation/expiry/count limits, and migration rerun behavior. Use a real SQL Server integration target for persistence checks when available; keep unit tests independent of SQL Server.
-3. **Verify deployment readiness.** Run the React client and API against a fresh database and an upgraded existing database. Document environment configuration, HTTPS/proxy behavior, rate limits, startup checks, and recovery steps for failed SQL updates.
-4. **Add access control (final launch-hardening phase).** When account/project access is flagged for implementation, decide user versus project ownership, protect schema and link-management routes, and preserve the public bearer route for consumers. This is intentionally deferred until the other MVP paths and deployment workflow are stable.
-5. **Add nested JSON schema support.** Define accepted JSON shapes and validation first, then choose recursive relational nodes or versioned JSON persistence and generate the same object/array shape.
-6. **Consider deterministic generation and optional Ollama.** Define seed semantics and repeatability if requested. Keep Ollama optional and verify deterministic generation remains available if Ollama is unavailable.
+3. **Improve the core based on first-release feedback.** Prioritize data quality, schema/field validation, useful errors, and operational issues that block customers from completing the core workflow. Keep scope tied to observed usage.
+4. **Add nested JSON as an optional product extension.** Define supported object/array shapes, validation, migration, and generation behavior. It is not required to prove the flat-schema core.
+5. **Consider deterministic generation and optional Ollama.** Add repeatable seeds or AI-backed realistic values only for concrete user needs. Keep the existing generator working independently of Ollama.
+6. **Add authentication and authorization (last planned feature phase).** When flagged, decide user versus project ownership, protect schema and link-management routes, and keep public bearer URLs available for consumers.
 
 ## Explicitly defer
 
-Defer Ollama integration, a standalone generation microservice, nested JSON, account/project ownership and access control (planned as the final launch-hardening phase), link expiry by default, deterministic/seeded responses, configurable delays/status/headers, query-driven generation, detailed usage logs, and a larger architectural split. These are useful extensions but add product, security, schema, or operational complexity that is not needed to make the current MVP paths work. Revisit based on concrete usage and deployment needs. Do not introduce CQRS/MediatR, event sourcing, Clean/Onion Architecture, or unnecessary repository abstractions.
+Defer Ollama integration, a standalone generation microservice, nested JSON, account/project ownership and access control (planned as the last feature phase), link expiry by default, deterministic/seeded responses, configurable delays/status/headers, query-driven generation, detailed usage logs, and a larger architectural split. These are optional extensions, not prerequisites for the flat-schema V1 core. Revisit based on concrete usage and deployment needs. Do not introduce CQRS/MediatR, event sourcing, Clean/Onion Architecture, or unnecessary repository abstractions.
 
 ## Dependencies and database evolution
 
@@ -83,4 +83,4 @@ The API depends on ASP.NET Core, Dapper, Microsoft.Data.SqlClient, and SQL Serve
 
 ## Approval boundary
 
-This roadmap records shipped MVP functionality, the selected database-update workflow, and deferred improvements. Follow the repository Git workflow and commit implementation on feature branches; documentation-only commits may be made on `main` as directed by the user.
+This roadmap records the V1 core workflow, selected database-update workflow, release priorities, and optional post-core additions. Follow the repository Git workflow and commit implementation on feature branches; documentation-only commits may be made on `main` as directed by the user.

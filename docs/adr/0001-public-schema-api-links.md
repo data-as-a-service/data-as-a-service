@@ -12,7 +12,7 @@ The application stores flat schemas and generates random records through `Schema
 - A link references an existing schema; one schema may have multiple links.
 - Links are public bearer URLs with high-entropy keys. Persist only a key hash; reveal the complete URL only at creation or rotation. If a URL is lost, an explicit recovery action rotates the key and returns a replacement, invalidating old copies.
 - Links can be revoked and rotated, have no default expiry, and are removed when their schema is deleted.
-- `GET /api/mock/{publicKey}` returns a JSON array of flat generated records. Generation remains random per request and uses the current generator factory.
+- `GET /api/v1/data/{publicKey}` returns a JSON array of flat generated records. Generation remains random per request and uses the current generator factory.
 - A link stores a default record count; a caller override is bounded by a server-side maximum.
 - Apply basic rate limiting to the public endpoint. Do not persist detailed per-request usage in the MVP.
 - Keep implementation in the existing ASP.NET Core controller → service → Dapper/SQL Server flow.
