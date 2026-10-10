@@ -82,6 +82,7 @@ The frontend uses React and is organized by feature. Keep its architecture simpl
 - Work on the current feature branch. Before substantial changes, check `git status` and `git branch --show-current`.
 - Do not switch branches automatically unless explicitly instructed.
 - Make small, logical commits, each representing one coherent and reviewable change.
+- Keep commits narrowly scoped: commit one independently reviewable concern at a time, and do not bundle unrelated implementation, tests, documentation, or deployment edits into a large catch-all commit. Split work into additional commits when the changes have separate purposes, and review the staged file list before each commit.
 - Before committing, inspect the diff, build the affected project, run relevant tests, verify that unrelated files are excluded, and ensure secrets or local configuration are not included.
 - Do not merge, rebase, squash, force-push, or push unless explicitly instructed. The user handles PRs and branch management otherwise.
 - The deployment workflow runs for `feature/*` and `Feature/*` branches. Prefer the lowercase `feature/` prefix (for example, `feature/json-file-storage`); do not use `feat/`. Inspect the actual workflow before creating or switching branches.
