@@ -84,6 +84,7 @@ The frontend uses React and is organized by feature. Keep its architecture simpl
 - Make small, logical commits, each representing one coherent and reviewable change.
 - Before committing, inspect the diff, build the affected project, run relevant tests, verify that unrelated files are excluded, and ensure secrets or local configuration are not included.
 - Do not merge, rebase, squash, force-push, or push unless explicitly instructed. The user handles PRs and branch management otherwise.
+- The deployment workflow runs for `feature/*` and `Feature/*` branches. Prefer the lowercase `feature/` prefix (for example, `feature/json-file-storage`); do not use `feat/`. Inspect the actual workflow before creating or switching branches.
 
 # Working Style
 
@@ -119,11 +120,13 @@ The first API-link release is a simple public mock-data endpoint over an existin
 
 Links are public bearer URLs using a cryptographically random, unguessable key. Persist only a hash of the key; show the full URL only at creation/rotation. If the user loses a URL, an explicit recovery action rotates the key and returns a replacement, invalidating old copies. Links are revocable and rotatable. They do not expire by default in the MVP. One schema may have multiple links.
 
-The public endpoint initially supports GET and returns a JSON array matching the schema's flat fields, reusing the existing `FieldGeneratorFactory`. Output is random on each request. Link configuration sets a default record count, with any caller override bounded by server validation. Do not add deterministic seeds, delays, arbitrary status codes, configurable response headers, query-driven field rules, nested schemas, or AI generation to this release.
+The public endpoint supports GET and returns the persisted dataset for an API link and requested count. On a cache miss, it generates with the existing `FieldGeneratorFactory`, validates and stores the JSON file, and records a dataset version in SQL. Later GETs return the same saved content until explicit regeneration, expiry, or schema-version change. A bounded caller count has its own dataset. Regeneration is available to existing link-management routes; this management surface is currently unauthenticated just like the rest of the API. Do not add deterministic seeds, delays, arbitrary status codes, configurable response headers, or query-driven field rules without a concrete request.
+
+Schema definitions and generated datasets are JSON files below `JsonStorage:RootPath` (default `App_Data/json`). SQL stores relational metadata and internally generated storage keys, never user-controlled paths or document bodies. `JsonFileStorageService` owns file operations and uses atomic temporary-file writes. The current deployment assumption is one API instance with durable mounted storage; do not assume a host-local Docker volume is shared between instances. Keep SQL backups and storage backups consistent. See `docs/adr/0004-json-file-storage-and-persisted-datasets.md` for the file layout, migration, and recovery decisions. The storage boundary accepts nested JSON, but current schema APIs and generation remain flat until nested support is explicitly implemented.
 
 Use ordinary HTTP status behavior for invalid, missing, revoked, or expired links. Rate limiting is required for a public endpoint and should use the simplest ASP.NET Core-supported mechanism available in the deployed runtime. Do not persist per-request usage logs in the MVP; revisit lightweight aggregate metrics if usage visibility becomes necessary. Schema deletion must cascade-delete/revoke its links.
 
-Keep this feature in the existing controller → service → Dapper/SQL Server flow. Add durable product decisions and deferred improvements to `docs/product-roadmap.md` (and an ADR when a durable architecture choice merits one). Do not commit implementation changes directly on `main`; use the current feature branch or an explicitly authorized branch workflow.
+Keep this feature in the existing controller → service → Dapper/SQL Server and JSON-storage flow. Add durable product decisions and deferred improvements to `docs/product-roadmap.md` (and an ADR when a durable architecture choice merits one). Do not commit implementation changes directly on `main`; use the current feature branch or an explicitly authorized branch workflow.
 
 # Final Principle
 

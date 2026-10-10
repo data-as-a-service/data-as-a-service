@@ -18,7 +18,19 @@ The script uses Windows integrated authentication and requires permission to cre
 dotnet run --project src/servers/Web/Daas.Api/Daas.Api.csproj
 ```
 
-The API provides schema create/list/get/delete endpoints and `GET /api/schema/{id}/data/{howmany}` to generate the requested number of records. API links can be managed at `/api/schema/{id}/links`; the V1 public data endpoint is `GET /api/v1/data/{publicKey}` with an optional bounded `count` query parameter. Use the database setup command above to apply the `dbo.ApiLinks` update. Swagger is enabled at `/swagger`.
+The API provides schema create/list/get/delete endpoints and `GET /api/schema/{id}/data/{howmany}` to generate preview records. API links can be managed at `/api/schema/{id}/links`; regenerate a link's dataset with `POST /api/schema/{schemaId}/links/{linkId}/regenerate`. The V1 public data endpoint is `GET /api/v1/data/{publicKey}` with an optional bounded `count` query parameter. Public link datasets are persisted and reused until regeneration or expiry. Apply all pending database updates with the setup command above before deployment. Swagger is enabled at `/swagger`.
+
+## JSON document storage
+
+Schema documents and generated datasets are stored under `App_Data/json` by default. Configure `JsonStorage:RootPath` or the `JsonStorage__RootPath` environment variable to select another directory. `JsonStorage:MaxDocumentBytes` defaults to 50 MiB, `JsonStorage:RetainedDatasetVersions` to 5, and `JsonStorage:DatasetLifetimeHours` to 0 (no expiry).
+
+The Docker image uses `/data/json` as its storage root and listens on port `5247`. Mount a durable host directory or volume there, for example:
+
+```powershell
+docker run -p 5247:5247 -v daas-json:/data/json -e ConnectionStrings__DefaultConnection="<connection-string>" daas-api
+```
+
+Without a persistent mount, schema and dataset files are lost when the container is replaced. A volume on one host is not shared by other hosts, so multi-instance deployment requires shared durable storage and distributed generation coordination. Back up SQL Server and the JSON storage root together from a consistent recovery point; restore both to the same point. Existing schemas are migrated lazily from SQL field rows the first time they are read, and legacy rows are retained. Rolling back to the old API after new schema writes requires exporting JSON fields back into `dbo.FieldDefinitions`. See [ADR 0004](docs/adr/0004-json-file-storage-and-persisted-datasets.md) for the design and recovery details.
 
 ## Run the API and React frontend
 
