@@ -24,8 +24,10 @@ builder.Services.AddRateLimiter(options =>
 
 builder.Services.AddSingleton<FieldGeneratorFactory>();
 builder.Services.AddSingleton<Random>();
-builder.Services.AddScoped<SchemaService>();
+builder.Services.AddSingleton<JsonFileStorageService>();
+builder.Services.AddSingleton<SchemaService>();
 builder.Services.AddScoped<ApiLinkService>();
+builder.Services.AddSingleton<DatasetService>();
 
 var app = builder.Build();
 

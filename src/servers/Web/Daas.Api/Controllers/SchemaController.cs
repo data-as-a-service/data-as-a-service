@@ -16,16 +16,16 @@ public class SchemaController : ControllerBase
     }
 
     [HttpPost]
-    public IActionResult CreateSchema([FromBody] Schema schema)
+    public async Task<IActionResult> CreateSchema([FromBody] Schema schema, CancellationToken cancellationToken)
     {
-        var id = _schemaService.CreateSchema(schema);
+        var id = await _schemaService.CreateSchemaAsync(schema, cancellationToken);
         return Ok(new { Id = id });
     }
 
     [HttpGet("{id}")]
-    public IActionResult GetSchema(Guid id)
+    public async Task<IActionResult> GetSchema(Guid id, CancellationToken cancellationToken)
     {
-        var schema = _schemaService.GetSchema(id);
+        var schema = await _schemaService.GetSchemaAsync(id, cancellationToken);
         if (schema == null)
         {
             return NotFound();
@@ -35,15 +35,15 @@ public class SchemaController : ControllerBase
     }
 
     [HttpGet]
-    public IActionResult GetAllSchemas()
+    public async Task<IActionResult> GetAllSchemas(CancellationToken cancellationToken)
     {
-        return Ok(_schemaService.GetAllSchemas());
+        return Ok(await _schemaService.GetAllSchemasAsync(cancellationToken));
     }
 
     [HttpDelete("{id}")]
-    public IActionResult DeleteSchema(Guid id)
+    public async Task<IActionResult> DeleteSchema(Guid id, CancellationToken cancellationToken)
     {
-        if (!_schemaService.DeleteSchema(id))
+        if (!await _schemaService.DeleteSchemaAsync(id, cancellationToken))
         {
             return NotFound();
         }
@@ -52,11 +52,12 @@ public class SchemaController : ControllerBase
     }
 
     [HttpGet("{id}/data/{howmany}")]
-    public IActionResult GenerateData(Guid id, int howmany)
+    public async Task<IActionResult> GenerateData(Guid id, int howmany, CancellationToken cancellationToken)
     {
         try
         {
-            var result = _schemaService.GenerateData(id, howmany);
+            var schema = await _schemaService.GetSchemaAsync(id, cancellationToken);
+            var result = schema is null ? null : _schemaService.GenerateData(schema, howmany);
             if (result == null)
             {
                 return NotFound();

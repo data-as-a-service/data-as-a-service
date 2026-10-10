@@ -16,6 +16,9 @@ RUN dotnet publish src/servers/Web/Daas.Api/Daas.Api.csproj -c Release -o /app -
 # ---------- RUNTIME STAGE (SLIM) ----------
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS runtime
 WORKDIR /app
+ENV JsonStorage__RootPath=/data/json
+ENV ASPNETCORE_HTTP_PORTS=5247
+VOLUME ["/data/json"]
 
 COPY --from=build /app .
 
