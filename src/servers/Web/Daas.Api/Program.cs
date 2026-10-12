@@ -10,7 +10,7 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddCors(options => {
     options.AddPolicy("AllowCloudflareFrontend", policy => {
         policy.WithOrigins(
-                        "https://data-as-a-service-frontend.saikrishnaias2004.workers.dev/", 
+                        "https://data-as-a-service-frontend.saikrishnaias2004.workers.dev/"
                       )
                       .AllowAnyHeader()
                       .AllowAnyMethod();
