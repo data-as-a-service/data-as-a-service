@@ -7,6 +7,15 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddCors(options => {
+    options.AddPolicy("AllowCloudflareFrontend", policy => {
+        policy.WithOrigins(
+                        "https://data-as-a-service-frontend.saikrishnaias2004.workers.dev/", 
+                      )
+                      .AllowAnyHeader()
+                      .AllowAnyMethod();
+    });
+});
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -26,6 +35,7 @@ builder.Services.AddSingleton<FieldGeneratorFactory>();
 builder.Services.AddSingleton<Random>();
 builder.Services.AddScoped<SchemaService>();
 builder.Services.AddScoped<ApiLinkService>();
+
 
 var app = builder.Build();
 
