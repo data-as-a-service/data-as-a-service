@@ -57,4 +57,4 @@ On Windows, start both development servers with:
 ./scripts/start-dev.ps1
 ```
 
-The script starts the API on <http://127.0.0.1:5247>, waits for its Swagger endpoint to respond, and then starts the React development server at <http://localhost:5173>. Vite proxies `/api` and `/swagger` requests to the local API. If frontend dependencies are not installed yet, the script installs them from the lockfile. Press Ctrl+C to stop both servers.
+The script starts the API, waits for its Swagger endpoint to respond, and then starts the React development server. Open <http://127.0.0.1:5173>; the frontend proxies API requests to <http://localhost:5247>. If frontend dependencies are not installed yet, the script installs them from the lockfile. Press Ctrl+C to stop both servers.
