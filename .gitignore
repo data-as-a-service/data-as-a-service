@@ -363,3 +363,6 @@ MigrationBackup/
 FodyWeavers.xsd
 # Frontend build output
 src/frontend/daas-client/dist/
+
+# Local Compose settings and secrets
+.env
