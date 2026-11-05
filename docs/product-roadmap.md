@@ -2,7 +2,7 @@
 
 Date: 2026-10-08
 
-This document records the current product baseline and release plan. V1's core workflow is schema creation → API-link creation → external GET returning generated JSON. The React MVP, public API-link workflow, and repeatable database setup are implemented. The immediate focus is verifying and releasing that core workflow. Authentication/authorization and nested JSON remain future add-ons; access control remains the final planned feature phase as requested.
+This document records the current product baseline and release plan. V1's core workflow is schema creation → API-link creation → external GET returning generated JSON. The React MVP, public API-link workflow, and repeatable database setup are implemented. The immediate focus is verifying and releasing that core workflow. Authentication/authorization and nested JSON remain future add-ons; access control remains the final planned feature phase as requested. The frontend is currently hosted at `https://data-as-a-service-frontend.saikrishnaias2004.workers.dev/` on Cloudflare Workers; production API hosting and frontend-to-API connectivity still need to be selected and verified.
 
 ## Current implementation
 
@@ -56,7 +56,11 @@ These are the product defaults for initial implementation. If product use shows 
 
 ### Nested JSON
 
-Define accepted JSON shapes and validation rules first. Nested objects and arrays require a recursive schema representation, persistence for nested nodes or an equivalent serialized schema format, and generators that preserve the structure. This is a deliberate extension of the current flat `FieldDefinition` model and will require database changes.
+The current implementation supports flat JSON records only. Define accepted JSON shapes and validation rules first. Nested objects and arrays require a recursive schema representation, persistence for nested nodes or an equivalent serialized schema format, and generators (including Ollama validation) that preserve the structure. This is a deliberate extension of the current flat `FieldDefinition` model and will require database and frontend schema-editor changes. Keep flat schemas and existing API responses working during the extension; do not start until supported depth, arrays, optional fields, and migration behavior are specified.
+
+### Logging and production observability
+
+The API currently has ASP.NET Core's default console logging and no centralized log viewer. Add structured logs that help trace a request across controller, service, Dapper/SQL, and optional Ollama calls, while keeping controllers and services in the existing architecture. First identify deployment topology and correlate requests with a trace/request ID; log useful failure context and timings without recording bearer URLs/keys, credentials, generated sensitive payloads, or internal exception details in public responses. Evaluate Serilog with Seq as a small self-hosted log store/viewer, including local Docker Compose setup and retention/resource needs. Production logs must be emitted by the API host to an authenticated, network-restricted Seq endpoint (or another selected sink); do not assume the Cloudflare Workers-hosted static frontend can host the API or Seq. Verify production API reachability, CORS, health checks, and log delivery from the actual API runtime before relying on the dashboard. Keep console logging as a useful local fallback when Seq is unavailable.
 
 ### Optional Ollama generation
 
@@ -69,9 +73,10 @@ For local development on Windows, `compose.ollama.yaml` runs the official Ollama
 1. **Release the V1 core workflow.** Verify schema creation, public link creation/copying, and external GET generation end to end. Smoke-test a fresh database and an existing database using `scripts/setup-database.ps1`. The deployment owner handles hosting/container work; share the database setup, runtime connection string, public URL/proxy, and rate-limit details with them.
 2. **Add focused automated tests.** Cover schema CRUD and generated output, link creation/key secrecy/rotation/revocation/expiry/count limits, and migration rerun behavior. Use a real SQL Server integration target for persistence checks when available; keep unit tests independent of SQL Server.
 3. **Improve the core based on first-release feedback.** Prioritize data quality, schema/field validation, useful errors, and operational issues that block customers from completing the core workflow. Keep scope tied to observed usage.
-4. **Add nested JSON as an optional product extension.** Define supported object/array shapes, validation, migration, and generation behavior. It is not required to prove the flat-schema core.
-5. **Improve generation based on usage.** Per-link Ollama generation and random fallback are available. Repeatable seeded output, nested schemas, and richer realistic generation remain future work based on concrete needs.
-6. **Add authentication and authorization (last planned feature phase).** When flagged, decide user versus project ownership, protect schema and link-management routes, and keep public bearer URLs available for consumers.
+4. **Establish production API hosting and observability.** The React frontend is hosted on Cloudflare Workers; choose a reachable API hosting/runtime and configure the production API URL, CORS, health checks, and secret handling. Add structured request-correlated logging and a restricted log viewer such as Seq after confirming the API host can deliver logs to it. Validate using a production request and a deliberately induced server-side failure without exposing secrets or internals.
+5. **Add nested JSON as an optional product extension.** Define supported object/array shapes, validation, migration, frontend editing, and generation behavior. It is not required to prove the flat-schema core.
+6. **Improve generation based on usage.** Per-link Ollama generation and random fallback are available. Repeatable seeded output, nested schemas, and richer realistic generation remain future work based on concrete needs.
+7. **Add authentication and authorization (last planned feature phase).** When flagged, decide user versus project ownership, protect schema and link-management routes, and keep public bearer URLs available for consumers.
 
 ## Explicitly defer
 
