@@ -3,7 +3,7 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $apiProject = Join-Path $repoRoot 'src\servers\Web\Daas.Api\Daas.Api.csproj'
 $frontendRoot = Join-Path $repoRoot 'src\frontend\daas-client'
-$apiUrl = 'http://localhost:5247'
+$apiUrl = 'http://127.0.0.1:5247'
 $swaggerUrl = "$apiUrl/swagger/v1/swagger.json"
 
 function Stop-ProcessTree([System.Diagnostics.Process]$Process) {
@@ -50,8 +50,8 @@ try {
     if (-not $apiReady) { throw "The API did not become ready within 90 seconds. Check the API output and database configuration." }
 
     Write-Host "API is ready at $apiUrl. Starting the React frontend…"
-    $frontendProcess = Start-Process -FilePath 'cmd.exe' -ArgumentList '/c npm.cmd run dev -- --host 127.0.0.1 --strictPort' -WorkingDirectory $frontendRoot -PassThru -NoNewWindow
-    Write-Host 'Frontend: http://127.0.0.1:5173'
+    $frontendProcess = Start-Process -FilePath 'cmd.exe' -ArgumentList '/c npm.cmd run dev -- --host localhost --strictPort' -WorkingDirectory $frontendRoot -PassThru -NoNewWindow
+    Write-Host 'Frontend: http://localhost:5173'
     Write-Host 'Press Ctrl+C to stop both services.'
 
     while ($true) {
