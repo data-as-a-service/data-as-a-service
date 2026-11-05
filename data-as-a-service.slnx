@@ -4,4 +4,7 @@
   <Folder Name="/src/servers/Web/">
     <Project Path="src/servers/Web/Daas.Api/Daas.Api.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Daas.Api.Tests/Daas.Api.Tests.csproj" />
+  </Folder>
 </Solution>

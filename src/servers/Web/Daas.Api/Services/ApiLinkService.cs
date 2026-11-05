@@ -23,7 +23,7 @@ public class ApiLinkService
         var hash = HashKey(publicKey);
         using var connection = new SqlConnection(_connectionString);
         return connection.QuerySingleOrDefault<ApiLink>(
-            "SELECT Id, SchemaId, KeyHash, IsActive, CreatedAt, ExpiresAt, DefaultRecordCount FROM dbo.ApiLinks WHERE KeyHash = @KeyHash AND IsActive = 1 AND (ExpiresAt IS NULL OR ExpiresAt > SYSUTCDATETIME());",
+            "SELECT Id, SchemaId, KeyHash, IsActive, CreatedAt, ExpiresAt, DefaultRecordCount, GenerationMode FROM dbo.ApiLinks WHERE KeyHash = @KeyHash AND IsActive = 1 AND (ExpiresAt IS NULL OR ExpiresAt > SYSUTCDATETIME());",
             new { KeyHash = hash });
     }
 
@@ -31,13 +31,13 @@ public class ApiLinkService
     {
         using var connection = new SqlConnection(_connectionString);
         return connection.Query<ApiLink>(
-            "SELECT Id, SchemaId, KeyHash, IsActive, CreatedAt, ExpiresAt, DefaultRecordCount FROM dbo.ApiLinks WHERE SchemaId = @SchemaId ORDER BY CreatedAt DESC;",
+            "SELECT Id, SchemaId, KeyHash, IsActive, CreatedAt, ExpiresAt, DefaultRecordCount, GenerationMode FROM dbo.ApiLinks WHERE SchemaId = @SchemaId ORDER BY CreatedAt DESC;",
             new { SchemaId = schemaId }).ToList();
     }
 
-    public (ApiLink? Link, string? PublicKey) Create(Guid schemaId, int count, DateTime? expiresAt)
+    public (ApiLink? Link, string? PublicKey) Create(Guid schemaId, int count, DateTime? expiresAt, int generationMode)
     {
-        ValidateSettings(count, expiresAt);
+        ValidateSettings(count, expiresAt, generationMode);
         var publicKey = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)).ToLowerInvariant();
         var link = new ApiLink
         {
@@ -47,12 +47,13 @@ public class ApiLinkService
             IsActive = true,
             CreatedAt = DateTime.UtcNow,
             ExpiresAt = expiresAt,
-            DefaultRecordCount = count
+            DefaultRecordCount = count,
+            GenerationMode = generationMode
         };
 
         using var connection = new SqlConnection(_connectionString);
         var affected = connection.Execute(
-            "INSERT INTO dbo.ApiLinks (Id, SchemaId, KeyHash, IsActive, CreatedAt, ExpiresAt, DefaultRecordCount) SELECT @Id, @SchemaId, @KeyHash, @IsActive, @CreatedAt, @ExpiresAt, @DefaultRecordCount WHERE EXISTS (SELECT 1 FROM dbo.Schemas WHERE Id = @SchemaId);",
+            "INSERT INTO dbo.ApiLinks (Id, SchemaId, KeyHash, IsActive, CreatedAt, ExpiresAt, DefaultRecordCount, GenerationMode) SELECT @Id, @SchemaId, @KeyHash, @IsActive, @CreatedAt, @ExpiresAt, @DefaultRecordCount, @GenerationMode WHERE EXISTS (SELECT 1 FROM dbo.Schemas WHERE Id = @SchemaId);",
             link);
         if (affected == 0)
         {
@@ -62,16 +63,16 @@ public class ApiLinkService
         return (link, publicKey);
     }
 
-    public ApiLink? Update(Guid schemaId, Guid linkId, int count, DateTime? expiresAt)
+    public ApiLink? Update(Guid schemaId, Guid linkId, int count, DateTime? expiresAt, int? generationMode)
     {
-        ValidateSettings(count, expiresAt);
+        ValidateSettings(count, expiresAt, generationMode);
         using var connection = new SqlConnection(_connectionString);
         var updated = connection.Execute(
-            "UPDATE dbo.ApiLinks SET DefaultRecordCount = @Count, ExpiresAt = @ExpiresAt WHERE Id = @LinkId AND SchemaId = @SchemaId AND IsActive = 1;",
-            new { LinkId = linkId, SchemaId = schemaId, Count = count, ExpiresAt = expiresAt });
+            "UPDATE dbo.ApiLinks SET DefaultRecordCount = @Count, ExpiresAt = @ExpiresAt, GenerationMode = COALESCE(@GenerationMode, GenerationMode) WHERE Id = @LinkId AND SchemaId = @SchemaId AND IsActive = 1;",
+            new { LinkId = linkId, SchemaId = schemaId, Count = count, ExpiresAt = expiresAt, GenerationMode = generationMode });
         if (updated == 0) return null;
         return connection.QuerySingle<ApiLink>(
-            "SELECT Id, SchemaId, KeyHash, IsActive, CreatedAt, ExpiresAt, DefaultRecordCount FROM dbo.ApiLinks WHERE Id = @LinkId;",
+            "SELECT Id, SchemaId, KeyHash, IsActive, CreatedAt, ExpiresAt, DefaultRecordCount, GenerationMode FROM dbo.ApiLinks WHERE Id = @LinkId;",
             new { LinkId = linkId });
     }
 
@@ -93,7 +94,7 @@ public class ApiLinkService
             new { LinkId = linkId, SchemaId = schemaId, KeyHash = HashKey(publicKey) }, transaction);
         if (updated == 0) return (null, null);
         var link = connection.QuerySingle<ApiLink>(
-            "SELECT Id, SchemaId, KeyHash, IsActive, CreatedAt, ExpiresAt, DefaultRecordCount FROM dbo.ApiLinks WHERE Id = @LinkId;",
+            "SELECT Id, SchemaId, KeyHash, IsActive, CreatedAt, ExpiresAt, DefaultRecordCount, GenerationMode FROM dbo.ApiLinks WHERE Id = @LinkId;",
             new { LinkId = linkId }, transaction);
         transaction.Commit();
         return (link, publicKey);
@@ -107,9 +108,12 @@ public class ApiLinkService
     public static bool ValidPublicKey(string publicKey) =>
         publicKey.Length == 64 && publicKey.All(Uri.IsHexDigit);
 
-    private static void ValidateSettings(int count, DateTime? expiresAt)
+    public static bool ValidGenerationMode(int generationMode) => generationMode is 0 or 1;
+
+    private static void ValidateSettings(int count, DateTime? expiresAt, int? generationMode)
     {
         if (!ValidCount(count)) throw new ArgumentOutOfRangeException(nameof(count));
+        if (generationMode.HasValue && !ValidGenerationMode(generationMode.Value)) throw new ArgumentOutOfRangeException(nameof(generationMode));
         if (expiresAt.HasValue && expiresAt.Value <= DateTime.UtcNow)
             throw new ArgumentOutOfRangeException(nameof(expiresAt));
     }

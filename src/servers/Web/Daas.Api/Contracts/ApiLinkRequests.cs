@@ -1,8 +1,8 @@
 namespace Daas.Api.Contracts;
 
-public record CreateApiLinkRequest(int DefaultRecordCount = 10, DateTime? ExpiresAt = null);
+public record CreateApiLinkRequest(int DefaultRecordCount = 10, DateTime? ExpiresAt = null, int GenerationMode = 0);
 
-public record UpdateApiLinkRequest(int DefaultRecordCount, DateTime? ExpiresAt = null);
+public record UpdateApiLinkRequest(int DefaultRecordCount, DateTime? ExpiresAt = null, int? GenerationMode = null);
 
 public record ApiLinkResponse(
     Guid Id,
@@ -10,7 +10,8 @@ public record ApiLinkResponse(
     bool IsActive,
     DateTime CreatedAt,
     DateTime? ExpiresAt,
-    int DefaultRecordCount);
+    int DefaultRecordCount,
+    int GenerationMode);
 
 public record CreatedApiLinkResponse(
     Guid Id,
@@ -19,4 +20,5 @@ public record CreatedApiLinkResponse(
     bool IsActive,
     DateTime CreatedAt,
     DateTime? ExpiresAt,
-    int DefaultRecordCount);
+    int DefaultRecordCount,
+    int GenerationMode);
