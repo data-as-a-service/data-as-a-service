@@ -10,11 +10,13 @@ public class ApiLinkController : ControllerBase
 {
     private readonly SchemaService _schemaService;
     private readonly ApiLinkService _linkService;
+    private readonly DatasetService _datasetService;
 
-    public ApiLinkController(SchemaService schemaService, ApiLinkService linkService)
+    public ApiLinkController(SchemaService schemaService, ApiLinkService linkService, DatasetService datasetService)
     {
         _schemaService = schemaService;
         _linkService = linkService;
+        _datasetService = datasetService;
     }
 
     [HttpPost]
@@ -29,18 +31,18 @@ public class ApiLinkController : ControllerBase
     }
 
     [HttpGet]
-    public IActionResult List(Guid schemaId)
+    public async Task<IActionResult> List(Guid schemaId)
     {
-        if (_schemaService.GetSchema(schemaId) is null) return NotFound();
+        if (await _schemaService.GetSchemaAsync(schemaId) is null) return NotFound();
         return Ok(_linkService.GetBySchema(schemaId).Select(ToResponse));
     }
 
     [HttpPut("{linkId:guid}")]
-    public IActionResult Update(Guid schemaId, Guid linkId, [FromBody] UpdateApiLinkRequest request)
+    public async Task<IActionResult> Update(Guid schemaId, Guid linkId, [FromBody] UpdateApiLinkRequest request)
     {
         if (!ApiLinkService.ValidCount(request.DefaultRecordCount) || !ValidExpiry(request.ExpiresAt))
             return BadRequest(new { error = "Record count must be between 1 and 1000 and expiry must be in the future." });
-        if (_schemaService.GetSchema(schemaId) is null) return NotFound();
+        if (await _schemaService.GetSchemaAsync(schemaId) is null) return NotFound();
         var link = _linkService.Update(schemaId, linkId, request.DefaultRecordCount, request.ExpiresAt);
         return link is null ? NotFound() : Ok(ToResponse(link));
     }
@@ -54,6 +56,26 @@ public class ApiLinkController : ControllerBase
     {
         var (link, key) = _linkService.Rotate(schemaId, linkId);
         return link is null || key is null ? NotFound() : Ok(CreatedResponse(link, key));
+    }
+
+    [HttpPost("{linkId:guid}/regenerate")]
+    public async Task<IActionResult> Regenerate(Guid schemaId, Guid linkId, CancellationToken cancellationToken)
+    {
+        var link = _linkService.GetActive(schemaId, linkId);
+        if (link is null) return NotFound();
+        try
+        {
+            var dataset = await _datasetService.GetOrCreateAsync(link, link.DefaultRecordCount, regenerate: true, cancellationToken: cancellationToken);
+            return dataset is null ? NotFound() : Ok(dataset);
+        }
+        catch (NotSupportedException exception)
+        {
+            return BadRequest(new { error = exception.Message });
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException or System.Text.Json.JsonException)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { error = "The dataset could not be stored or loaded. Check the configured JSON storage and retry." });
+        }
     }
 
     private static ApiLinkResponse ToResponse(Data.Entities.ApiLink link) => new(
