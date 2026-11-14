@@ -1,33 +1,61 @@
 name: DAAS application pipeline
-run-name: ${{ github.actor }} triggered DAAS application deployment
+run-name: ${{ github.actor }} triggered DAAS application pipeline
 
 on:
   push:
+  pull_request:
     branches:
       - main
-      - feature/*
-      - Feature/*
-      - bug/*
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
-  build:
+  test:
+    name: API tests
     runs-on: ubuntu-latest
-
     steps:
-      - name: testing echo
-        run: echo "success"
-
-      - name: checkout code
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Build docker image
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Run API tests
+        run: dotnet test tests/Daas.Api.Tests/Daas.Api.Tests.csproj --configuration Release --logger "trx;LogFileName=daas-api-tests.trx" --results-directory TestResults
+
+      - name: Upload API test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: daas-api-test-results
+          path: TestResults/**/*.trx
+          if-no-files-found: ignore
+
+  build:
+    name: Build and publish Docker image
+    needs: test
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.ref == 'refs/heads/main' ||
+      startsWith(github.ref, 'refs/heads/feature/') ||
+      startsWith(github.ref, 'refs/heads/Feature/') ||
+      startsWith(github.ref, 'refs/heads/bug/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
         run: docker build --no-cache -t daasservice:latest .
 
-      - name: Generating image tag
-        run: echo "TAG=$(date +'%Y%m%d%H%M%S')" >> $GITHUB_ENV
+      - name: Generate image tag
+        run: echo "TAG=$(date +'%Y%m%d%H%M%S')" >> "$GITHUB_ENV"
 
-      - name: Retaging the image before pushing it to DockerHub
+      - name: Retag image for DockerHub
         run: |
           docker tag daasservice:latest sooraj2002/daas-application:latest
           docker tag daasservice:latest sooraj2002/daas-application:${{ env.TAG }}
@@ -39,11 +67,11 @@ jobs:
           -u "${{ secrets.DOCKER_USERNAME }}" \
           --password-stdin
 
-      - name: Pushing Docker image to DockerHub
+      - name: Push Docker image
         if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
         run: |
           docker push sooraj2002/daas-application:latest
           docker push sooraj2002/daas-application:${{ env.TAG }}
 
-      - name: listing the docker image
+      - name: List Docker images
         run: docker images
