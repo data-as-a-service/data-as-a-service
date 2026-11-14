@@ -41,21 +41,34 @@ docker run --rm --name daas-api -p 8081:8080 `
 
 Open <http://localhost:8081/swagger/index.html>. The host port (`8081`) forwards to the API's container port (`8080`). The image serves the API and Swagger; it does not include the React development server. Swagger can load without SQL Server, but schema and data operations require a reachable SQL Server with all database updates applied. Configure `ConnectionStrings__DefaultConnection` for the container environment; the Windows integrated-authentication connection string in `appsettings.json` is not automatically usable from a Linux container. For a SQL Server running on the same Windows host, `host.docker.internal` is the host name containers use to reach Windows. Do not put database passwords in the image or source repository.
 
-## Run the API and frontend in Docker
+## Run Ollama in Docker
 
-The root `Dockerfile` builds the API. The frontend has its own Dockerfile and Nginx config; Compose runs both and forwards frontend API and Swagger requests to the API container.
+Ollama is an optional provider for API links. You can run its official container without installing the Ollama application on Windows. Docker stores downloaded models in the named volume, and the published API port is bound to `127.0.0.1` so it is available to the host API without exposing Ollama to the network. The default host port is `11435` to avoid colliding with another local Ollama instance. Override it with `DAAS_OLLAMA_HOST_PORT` if needed.
 
-Copy `.env.example` to `.env`, then set a SQL Server connection string that the Linux container can use. For SQL Server on the Windows host with Docker Desktop, use `host.docker.internal` and SQL authentication. Configure SQL Server TCP/IP and apply database updates separately with the setup script above; the API does not change database schema at startup.
-
-Start the stack from the repository root:
+Start Ollama and download the configured default model:
 
 ```powershell
-Copy-Item .env.example .env
-# Edit .env with your SQL Server login and password.
-docker compose up --build
+docker compose -f compose.ollama.yaml up -d
+docker compose -f compose.ollama.yaml exec ollama ollama pull llama3.2
 ```
 
-Open <http://localhost:8088> for the React UI or <http://localhost:8088/swagger/index.html> for Swagger. Both are served through the frontend container; the API stays on the private Compose network. The frontend image serves compiled static files, so Node.js is only needed during the image build.
+The model download is separate from the container image and may take time. The named volume keeps it across container restarts and image updates. If port 11435 is already in use, set `$env:DAAS_OLLAMA_HOST_PORT` before starting Compose and use that same port in `Ollama__BaseUrl` below.
+
+For a smaller local smoke-test model, pull `qwen2.5:0.5b` instead and set `Ollama__Model` to that name for the API process. Use the larger `llama3.2` model when prioritizing response quality over download size.
+
+Enable Ollama for the DaaS API process and run the API on the host:
+
+```powershell
+$env:Ollama__Enabled = "true"
+$env:Ollama__BaseUrl = "http://127.0.0.1:11435"
+$env:Ollama__Model = "llama3.2"
+$env:Ollama__TimeoutSeconds = "60"
+dotnet run --project src/servers/Web/Daas.Api/Daas.Api.csproj
+```
+
+Set an API link's generation mode to **Ollama** in the API-links page. Calls to that link try Ollama first and return data from the existing random generator if the provider fails or returns invalid output. If the API is later placed in the same Compose network as Ollama, set `Ollama__BaseUrl` to `http://ollama:11434` instead.
+
+The Ollama Docker service is CPU-only by default. GPU container support depends on the host OS, GPU, drivers, and Docker runtime configuration; verify those requirements before enabling GPU flags. ONNX Runtime is deferred and is not required for this setup.
 
 ## Run the API and React frontend
 

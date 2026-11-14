@@ -14,14 +14,16 @@ public class SchemaService
     private readonly FieldGeneratorFactory _factory;
     private readonly JsonFileStorageService _storage;
     private readonly ILogger<SchemaService> _logger;
+    private readonly OllamaDataGenerator _ollamaGenerator;
 
-    public SchemaService(IConfiguration configuration, FieldGeneratorFactory factory, JsonFileStorageService storage, ILogger<SchemaService> logger)
+    public SchemaService(IConfiguration configuration, FieldGeneratorFactory factory, JsonFileStorageService storage, ILogger<SchemaService> logger, OllamaDataGenerator ollamaGenerator)
     {
         _connectionString = configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException("The DefaultConnection connection string is not configured.");
         _factory = factory;
         _storage = storage;
         _logger = logger;
+        _ollamaGenerator = ollamaGenerator;
     }
 
     public async Task<Guid> CreateSchemaAsync(Schema schema, CancellationToken cancellationToken = default)
@@ -166,6 +168,18 @@ public class SchemaService
             result.Add(row);
         }
         return result;
+    }
+
+    public async Task<List<object>?> GenerateDataForLinkAsync(Guid id, int howmany, int generationMode, CancellationToken cancellationToken)
+    {
+        var schema = await GetSchemaAsync(id, cancellationToken);
+        if (schema is null) return null;
+        if (generationMode == 1)
+        {
+            var generated = await _ollamaGenerator.TryGenerateAsync(schema, howmany, cancellationToken);
+            if (generated is not null) return generated;
+        }
+        return GenerateData(schema, howmany);
     }
 
     private sealed record SchemaMetadata(Guid Id, string Name, Guid? SchemaStorageKey, int SchemaVersion);

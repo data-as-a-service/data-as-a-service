@@ -1,0 +1,12 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: daas-ollama
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${DAAS_OLLAMA_HOST_PORT:-11435}:11434"
+    volumes:
+      - ollama_models:/root/.ollama
+
+volumes:
+  ollama_models:

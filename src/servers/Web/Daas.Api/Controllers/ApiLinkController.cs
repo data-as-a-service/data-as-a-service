@@ -22,9 +22,9 @@ public class ApiLinkController : ControllerBase
     [HttpPost]
     public IActionResult Create(Guid schemaId, [FromBody] CreateApiLinkRequest request)
     {
-        if (!ApiLinkService.ValidCount(request.DefaultRecordCount) || !ValidExpiry(request.ExpiresAt))
-            return BadRequest(new { error = "Record count must be between 1 and 1000 and expiry must be in the future." });
-        var (link, key) = _linkService.Create(schemaId, request.DefaultRecordCount, request.ExpiresAt);
+        if (!ApiLinkService.ValidCount(request.DefaultRecordCount) || !ApiLinkService.ValidGenerationMode(request.GenerationMode) || !ValidExpiry(request.ExpiresAt))
+            return BadRequest(new { error = "Record count must be between 1 and 1000, generation mode must be 0 or 1, and expiry must be in the future." });
+        var (link, key) = _linkService.Create(schemaId, request.DefaultRecordCount, request.ExpiresAt, request.GenerationMode);
         if (link is null || key is null) return NotFound();
         var response = CreatedResponse(link, key);
         return Created($"/api/schema/{schemaId}/links/{link.Id}", response);
@@ -40,10 +40,10 @@ public class ApiLinkController : ControllerBase
     [HttpPut("{linkId:guid}")]
     public async Task<IActionResult> Update(Guid schemaId, Guid linkId, [FromBody] UpdateApiLinkRequest request)
     {
-        if (!ApiLinkService.ValidCount(request.DefaultRecordCount) || !ValidExpiry(request.ExpiresAt))
-            return BadRequest(new { error = "Record count must be between 1 and 1000 and expiry must be in the future." });
+        if (!ApiLinkService.ValidCount(request.DefaultRecordCount) || (request.GenerationMode.HasValue && !ApiLinkService.ValidGenerationMode(request.GenerationMode.Value)) || !ValidExpiry(request.ExpiresAt))
+            return BadRequest(new { error = "Record count must be between 1 and 1000, generation mode must be 0 or 1, and expiry must be in the future." });
         if (await _schemaService.GetSchemaAsync(schemaId) is null) return NotFound();
-        var link = _linkService.Update(schemaId, linkId, request.DefaultRecordCount, request.ExpiresAt);
+        var link = _linkService.Update(schemaId, linkId, request.DefaultRecordCount, request.ExpiresAt, request.GenerationMode);
         return link is null ? NotFound() : Ok(ToResponse(link));
     }
 
@@ -81,13 +81,13 @@ public class ApiLinkController : ControllerBase
     private static ApiLinkResponse ToResponse(Data.Entities.ApiLink link) => new(
         link.Id, link.SchemaId, link.IsActive, DateTime.SpecifyKind(link.CreatedAt, DateTimeKind.Utc),
         link.ExpiresAt.HasValue ? DateTime.SpecifyKind(link.ExpiresAt.Value, DateTimeKind.Utc) : null,
-        link.DefaultRecordCount);
+        link.DefaultRecordCount, link.GenerationMode);
 
     private CreatedApiLinkResponse CreatedResponse(Data.Entities.ApiLink link, string key) => new(
         link.Id, link.SchemaId, $"{Request.Scheme}://{Request.Host}/api/v1/data/{key}",
         link.IsActive, DateTime.SpecifyKind(link.CreatedAt, DateTimeKind.Utc),
         link.ExpiresAt.HasValue ? DateTime.SpecifyKind(link.ExpiresAt.Value, DateTimeKind.Utc) : null,
-        link.DefaultRecordCount);
+        link.DefaultRecordCount, link.GenerationMode);
 
     private static bool ValidExpiry(DateTime? expiry) =>
         !expiry.HasValue || DateTime.SpecifyKind(expiry.Value, DateTimeKind.Utc) > DateTime.UtcNow;
