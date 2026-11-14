@@ -20,16 +20,21 @@ dotnet run --project src/servers/Web/Daas.Api/Daas.Api.csproj
 
 The API provides schema create/list/get/delete endpoints and `GET /api/schema/{id}/data/{howmany}` to generate the requested number of records. API links can be managed at `/api/schema/{id}/links`; the V1 public data endpoint is `GET /api/v1/data/{publicKey}` with an optional bounded `count` query parameter. Use the database setup command above to apply the `dbo.ApiLinks` update. Swagger is enabled at `/swagger`.
 
-## Run the API in Docker
+## Run the API and frontend in Docker
 
-Build and run the API image locally:
+The root `Dockerfile` builds the API. The frontend has its own Dockerfile and Nginx config; Compose runs both and forwards frontend API and Swagger requests to the API container.
+
+Copy `.env.example` to `.env`, then set a SQL Server connection string that the Linux container can use. For SQL Server on the Windows host with Docker Desktop, use `host.docker.internal` and SQL authentication. Configure SQL Server TCP/IP and apply database updates separately with the setup script above; the API does not change database schema at startup.
+
+Start the stack from the repository root:
 
 ```powershell
-docker build -t daas-api .
-docker run --rm --name daas-api -p 8081:8080 daas-api
+Copy-Item .env.example .env
+# Edit .env with your SQL Server login and password.
+docker compose up --build
 ```
 
-Open <http://localhost:8081/swagger/index.html>. The host port (`8081`) forwards to the API's HTTP port (`8080`) inside the container. The image contains the API and Swagger, not the React development server. Swagger can load without SQL Server, but schema and data operations require a reachable database with all updates applied. Set the `ConnectionStrings__DefaultConnection` environment variable to a connection string usable from the container; the Windows integrated-authentication string in `appsettings.json` does not automatically work inside a Linux container. For SQL Server running on the same Windows host, `host.docker.internal` is the host name containers use to reach Windows. The API does not apply database migrations automatically.
+Open <http://localhost:8088> for the React UI or <http://localhost:8088/swagger/index.html> for Swagger. Both are served through the frontend container; the API stays on the private Compose network. The frontend image serves compiled static files, so Node.js is only needed during the image build.
 
 ## Run the API and React frontend
 
