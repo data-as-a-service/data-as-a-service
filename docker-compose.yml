@@ -1,0 +1,25 @@
+services:
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: sqlserver
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Sooora@123!"
+    ports:
+      - "1433:1433"
+    volumes:
+      - sql_data:/var/opt/mssql
+
+  daas-api:
+    image: sooraj2002/daas-application:latest
+    container_name: daas-api
+    ports:
+      - "5247:8080"
+    environment:
+      ConnectionStrings__DefaultConnection: "Server=sqlserver;Database=Daas;User Id=sa;Password=Sooora@123!;TrustServerCertificate=True;"
+    depends_on:
+      - sqlserver
+
+volumes:
+  sql_data:
