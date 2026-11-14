@@ -78,4 +78,18 @@ On Windows, start both development servers with:
 ./scripts/start-dev.ps1
 ```
 
-The script starts the API, waits for its Swagger endpoint to respond, and then starts the React development server. Open <http://127.0.0.1:5173>; the frontend proxies API requests to <http://localhost:5247>. If frontend dependencies are not installed yet, the script installs them from the lockfile. Press Ctrl+C to stop both servers.
+The script starts the API on <http://127.0.0.1:5247>, waits for its Swagger endpoint to respond, and then starts the React development server at <http://localhost:5173>. Vite proxies `/api` and `/swagger` requests to the local API. If frontend dependencies are not installed yet, the script installs them from the lockfile. Press Ctrl+C to stop both servers.
+
+## Run the frontend and API with Docker Compose
+
+The development Compose stack starts the API and Vite frontend together. It uses the host's SQL Server rather than starting a database container, and the API container requires SQL authentication because Windows integrated authentication is not available to this Linux container.
+
+1. Configure SQL Server to accept TCP connections and SQL authentication. Create a least-privilege SQL login for the existing `Daas` database. Apply any pending database updates on the host with `scripts/setup-database.ps1 -Server "<sql-server>"`.
+2. Copy `.env.example` to `.env` and set `DAAS_CONNECTION_STRING` to the SQL login and a SQL Server address reachable from Docker. For Docker Desktop talking to SQL Server on Windows, `host.docker.internal,1433` is the default host address. Keep `.env` private; it is ignored by Git. In the connection string, write `$` as `$$` if Compose would otherwise treat it as variable interpolation.
+3. Start both services:
+
+```powershell
+docker compose -f compose.dev.yaml up --build
+```
+
+Open <http://localhost:5173>. Vite forwards `/api` and `/swagger` to the API container over the private Compose network. The API is also available at <http://127.0.0.1:5247/swagger> for local diagnostics. Stop the stack with Ctrl+C, or run `docker compose -f compose.dev.yaml down` in another terminal. This stack does not change the database schema automatically and does not include Ollama; use `compose.ollama.yaml` separately if needed.
