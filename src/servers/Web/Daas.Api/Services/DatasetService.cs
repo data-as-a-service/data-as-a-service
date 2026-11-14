@@ -27,7 +27,12 @@ public sealed class DatasetService
         _lifetimeHours = Math.Clamp(configuration.GetValue<int?>("JsonStorage:DatasetLifetimeHours") ?? 0, 0, 87600);
     }
 
-    public async Task<JsonNode?> GetOrCreateAsync(ApiLink link, int recordCount, bool regenerate = false, CancellationToken cancellationToken = default)
+    public async Task<JsonNode?> GetOrCreateAsync(
+        ApiLink link,
+        int recordCount,
+        bool regenerate = false,
+        CancellationToken cancellationToken = default,
+        int? generationModeOverride = null)
     {
         await using var lookupConnection = new SqlConnection(_connectionString);
         var current = await GetCurrentAsync(lookupConnection, link.Id, recordCount);
@@ -47,8 +52,14 @@ public sealed class DatasetService
             if (schema is null) return null;
             var schemaVersion = await _schemaService.GetSchemaVersionAsync(link.SchemaId);
 
-            var generated = link.GenerationMode == 1
-                ? await _schemaService.GenerateDataForLinkAsync(link.SchemaId, recordCount, link.GenerationMode, cancellationToken)
+            // Public GET cache misses always use the built-in generator. AI generation
+            // is opt-in for an explicit regeneration request only.
+            var generationMode = regenerate && generationModeOverride == 1 ? 1 : 0;
+            if (regenerate)
+                _logger.LogInformation("Regenerating dataset for API link {LinkId} with generation mode {GenerationMode} for {RecordCount} records.", link.Id, generationMode, recordCount);
+
+            var generated = generationMode == 1
+                ? await _schemaService.GenerateDataForLinkAsync(link.SchemaId, recordCount, generationMode, cancellationToken)
                 : _schemaService.GenerateData(schema, recordCount);
             if (generated is null) return null;
             var document = JsonSerializer.SerializeToNode(generated)
@@ -56,12 +67,13 @@ public sealed class DatasetService
             var storageKey = Guid.NewGuid();
             await _storage.SaveDatasetAsync(storageKey, document, cancellationToken);
             List<Guid> obsoleteStorageKeys;
+            int version;
             try
             {
                 await using var connection = new SqlConnection(_connectionString);
                 await connection.OpenAsync(cancellationToken);
                 using var transaction = connection.BeginTransaction();
-                var version = await connection.ExecuteScalarAsync<int>(
+                version = await connection.ExecuteScalarAsync<int>(
                     "SELECT ISNULL(MAX(Version), 0) + 1 FROM dbo.Datasets WITH (UPDLOCK, HOLDLOCK) WHERE ApiLinkId = @ApiLinkId AND RecordCount = @RecordCount;",
                     new { ApiLinkId = link.Id, RecordCount = recordCount }, transaction);
                 await connection.ExecuteAsync(
@@ -86,6 +98,7 @@ public sealed class DatasetService
                 await _storage.DeleteDatasetAsync(storageKey, CancellationToken.None);
                 throw;
             }
+            _logger.LogInformation("Saved dataset version {DatasetVersion} for API link {LinkId} using generation mode {GenerationMode}.", version, link.Id, generationMode);
             foreach (var obsoleteKey in obsoleteStorageKeys)
             {
                 try { await _storage.DeleteDatasetAsync(obsoleteKey, cancellationToken); }
