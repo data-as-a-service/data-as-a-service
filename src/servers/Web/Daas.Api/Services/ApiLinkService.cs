@@ -35,6 +35,14 @@ public class ApiLinkService
             new { SchemaId = schemaId }).ToList();
     }
 
+    public ApiLink? GetActive(Guid schemaId, Guid linkId)
+    {
+        using var connection = new SqlConnection(_connectionString);
+        return connection.QuerySingleOrDefault<ApiLink>(
+            "SELECT Id, SchemaId, KeyHash, IsActive, CreatedAt, ExpiresAt, DefaultRecordCount FROM dbo.ApiLinks WHERE Id = @LinkId AND SchemaId = @SchemaId AND IsActive = 1 AND (ExpiresAt IS NULL OR ExpiresAt > SYSUTCDATETIME());",
+            new { LinkId = linkId, SchemaId = schemaId });
+    }
+
     public (ApiLink? Link, string? PublicKey) Create(Guid schemaId, int count, DateTime? expiresAt)
     {
         ValidateSettings(count, expiresAt);
