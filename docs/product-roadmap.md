@@ -25,7 +25,7 @@ The API currently exposes:
 
 `FieldGeneratorFactory` maps Int, String, Boolean, Float, Character, Guid, Date, and Double to the existing generators. A singleton `Random` is injected into the factory. Values are random; generation is not repeatable from a request seed. The stored field type enum has more values than the factory supports.
 
-The database uses `dbo.Schemas`, legacy `dbo.FieldDefinitions`, `dbo.ApiLinks`, and `dbo.Datasets`; numbered scripts in `scripts/database-updates` record applied IDs in `dbo.SchemaMigrations`. Current schema documents and generated dataset bodies live as JSON files under the configured storage root. The API does not apply DDL automatically at startup.
+The database uses `dbo.Schemas`, `dbo.FieldDefinitions`, and `dbo.ApiLinks`; schema-owned fields and links cascade-delete. `scripts/initialize-database.sql` creates the base schema; numbered scripts in `scripts/database-updates` add later schema changes and record applied IDs in `dbo.SchemaMigrations`. `scripts/setup-database.ps1` runs both steps for fresh or existing databases. The API does not apply DDL automatically at startup. In production, Azure SQL schema updates must be deployed separately from the Render API and Cloudflare frontend; a successful application deploy does not update the database.
 
 The React client supports schema management, data preview, and API-link management. Swagger is enabled. There is no authentication/authorization. Storage tests cover local JSON read/write behavior; SQL-backed integration tests still need a SQL Server target. JSON import, nested schema generation, and Ollama integration are not implemented.
 
@@ -69,9 +69,17 @@ Define accepted JSON shapes and validation rules first. Nested objects and array
 
 Keep deterministic generation available independently. The main API should own HTTP handling, schema/link persistence, validation, and provider selection. A narrow generation boundary can accept a schema and generation options and return JSON. The deterministic generator remains the normal provider; an Ollama integration can be added later as an optional component behind that boundary. Configure timeouts and treat connection failures, unavailable service, and provider errors as reasons to fall back to deterministic generation. The core API must start and serve deterministic requests when Ollama is absent.
 
+### Production database deployment
+
+The Azure SQL database and Render API are separate deployables. A database migration that exists only in the repository does not reach production automatically, which can cause the deployed API to fail with errors such as `Invalid column name`. This is schema drift or an application/database version mismatch.
+
+For the current workflow, validate the migration locally, confirm backup or point-in-time restore for the production database, apply the numbered update to the same Azure SQL database used by Render, verify `dbo.SchemaMigrations`, and then deploy or restart the API. The immediate manual fallback is `scripts/setup-database.ps1`, run from a machine with approved Azure SQL firewall access; its current Windows integrated-authentication behavior is not a production automation solution.
+
+The durable target is a CI/CD migration step or Render pre-deploy command using a dedicated secret or identity that can reach Azure SQL. Migrations should be idempotent where practical, additive and backward-compatible for rolling deploys, and ordered so schema expansion happens before new code depends on it. Destructive changes should be a later cleanup release. Do not apply schema-changing SQL from API startup, commit credentials, or leave broad Azure SQL firewall access enabled.
+
 ## Phased implementation plan
 
-1. **Release the V1 core workflow.** Verify schema creation, public link creation/copying, and external GET generation end to end. Smoke-test a fresh database and an existing database using `scripts/setup-database.ps1`. The deployment owner handles hosting/container work; share the database setup, runtime connection string, public URL/proxy, and rate-limit details with them.
+1. **Release the V1 core workflow.** Verify schema creation, public link creation/copying, and external GET generation end to end. Smoke-test a fresh database and an existing database using `scripts/setup-database.ps1`. Establish a production migration step for Azure SQL before treating Render API deploys as repeatable. The deployment owner handles hosting/container work; share the database setup, runtime connection string, public URL/proxy, and rate-limit details with them.
 2. **Add focused automated tests.** Cover schema CRUD and generated output, link creation/key secrecy/rotation/revocation/expiry/count limits, and migration rerun behavior. Use a real SQL Server integration target for persistence checks when available; keep unit tests independent of SQL Server.
 3. **Improve the core based on first-release feedback.** Prioritize data quality, schema/field validation, useful errors, and operational issues that block customers from completing the core workflow. Keep scope tied to observed usage.
 4. **Add nested JSON as an optional product extension.** Define supported object/array shapes, validation, migration, and generation behavior. The JSON storage boundary already accepts nested JSON documents, but current APIs and generators remain flat.
