@@ -1,5 +1,6 @@
 using Daas.Api.Contracts;
 using Daas.Api.Services;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Daas.Api.Controllers;
@@ -59,6 +60,7 @@ public class ApiLinkController : ControllerBase
     }
 
     [HttpPost("{linkId:guid}/regenerate")]
+    [EnableRateLimiting("dataset-regeneration")]
     public async Task<IActionResult> Regenerate(Guid schemaId, Guid linkId, [FromQuery] int? generationMode, CancellationToken cancellationToken)
     {
         if (generationMode.HasValue && !ApiLinkService.ValidGenerationMode(generationMode.Value))

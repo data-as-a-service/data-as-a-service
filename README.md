@@ -45,6 +45,8 @@ Open <http://localhost:8081/swagger/index.html>. The host port (`8081`) forwards
 
 API links are created with random generation. Public GET cache misses and schema-version refreshes use the existing random generator; AI calls happen only when an operator explicitly regenerates a dataset and selects AI. The AI provider is selected by the API operator. AI output is validated against the flat schema and falls back to the existing generator on missing configuration, provider errors, timeouts, or invalid output. Generation results are persisted like other API-link datasets, so changing the provider affects datasets only after explicit AI regeneration; it does not rewrite cached responses.
 
+Dataset regeneration is limited to five requests per minute per observed client IP. The management API currently has no authentication, so this limit reduces accidental or abusive model usage but is not a substitute for access control before broader paid production use.
+
 Google AI Studio is the default AI provider. Create an API key in [Google AI Studio](https://aistudio.google.com/apikey), then configure it as a secret environment variable in local development or Render:
 
 ```powershell

@@ -12,6 +12,7 @@ The public API-link endpoint already returns random flat records through `Schema
 - Each explicit dataset regeneration can select the existing random generator or AI generation. The AI provider is selected by API operator configuration, not by API-link consumers.
 - Random generation remains the default and does not depend on Ollama.
 - Public GET cache misses and schema-version refreshes use random generation. AI calls happen only on an explicit regeneration request, avoiding unplanned hosted-model usage on public traffic.
+- Limit regeneration to five requests per minute per observed client IP. Existing management routes remain unauthenticated, so this is a basic usage cap, not access control.
 - Providers share the `IAiDataGenerator` boundary and run behind the existing API service. No separate generation microservice is introduced.
 - Google AI Studio is the default configured provider; its API key is supplied only to the backend through secret environment configuration. Ollama remains available as an alternative configured provider and can run in the official Docker image with a named volume for model storage.
 - The API accepts only JSON arrays with the requested number of objects, exactly the flat schema fields, and values that match supported field types.
