@@ -14,13 +14,13 @@ RUN dotnet restore src/servers/Web/Daas.Api/Daas.Api.csproj
 RUN dotnet publish src/servers/Web/Daas.Api/Daas.Api.csproj -c Release -o /app --no-restore
 
 
-# ---------- RUNTIME STAGE (SLIM) ----------
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS runtime
+# ---------- RUNTIME STAGE ----------
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 
 COPY --from=build /app .
 
-EXPOSE 5247
-EXPOSE 7268
+ENV ASPNETCORE_HTTP_PORTS=8080
+EXPOSE 8080
 
 ENTRYPOINT ["dotnet", "Daas.Api.dll"]

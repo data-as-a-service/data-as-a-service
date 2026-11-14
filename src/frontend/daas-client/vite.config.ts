@@ -5,8 +5,8 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      '/api': process.env.VITE_API_PROXY_TARGET ?? 'http://127.0.0.1:5247',
-      '/swagger': process.env.VITE_API_PROXY_TARGET ?? 'http://127.0.0.1:5247',
+      '/api': process.env.VITE_API_PROXY_TARGET ?? 'http://localhost:5247',
+      '/swagger': process.env.VITE_API_PROXY_TARGET ?? 'http://localhost:5247',
     },
   },
 });
