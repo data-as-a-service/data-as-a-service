@@ -1,5 +1,6 @@
 using Daas.Api.Contracts;
 using Daas.Api.Services;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Daas.Api.Controllers;
@@ -22,9 +23,9 @@ public class ApiLinkController : ControllerBase
     [HttpPost]
     public IActionResult Create(Guid schemaId, [FromBody] CreateApiLinkRequest request)
     {
-        if (!ApiLinkService.ValidCount(request.DefaultRecordCount) || !ApiLinkService.ValidGenerationMode(request.GenerationMode) || !ValidExpiry(request.ExpiresAt))
-            return BadRequest(new { error = "Record count must be between 1 and 1000, generation mode must be 0 or 1, and expiry must be in the future." });
-        var (link, key) = _linkService.Create(schemaId, request.DefaultRecordCount, request.ExpiresAt, request.GenerationMode);
+        if (!ApiLinkService.ValidCount(request.DefaultRecordCount) || !ValidExpiry(request.ExpiresAt))
+            return BadRequest(new { error = "Record count must be between 1 and 1000, and expiry must be in the future." });
+        var (link, key) = _linkService.Create(schemaId, request.DefaultRecordCount, request.ExpiresAt, generationMode: 0);
         if (link is null || key is null) return NotFound();
         var response = CreatedResponse(link, key);
         return Created($"/api/schema/{schemaId}/links/{link.Id}", response);
@@ -40,10 +41,10 @@ public class ApiLinkController : ControllerBase
     [HttpPut("{linkId:guid}")]
     public async Task<IActionResult> Update(Guid schemaId, Guid linkId, [FromBody] UpdateApiLinkRequest request)
     {
-        if (!ApiLinkService.ValidCount(request.DefaultRecordCount) || (request.GenerationMode.HasValue && !ApiLinkService.ValidGenerationMode(request.GenerationMode.Value)) || !ValidExpiry(request.ExpiresAt))
-            return BadRequest(new { error = "Record count must be between 1 and 1000, generation mode must be 0 or 1, and expiry must be in the future." });
+        if (!ApiLinkService.ValidCount(request.DefaultRecordCount) || !ValidExpiry(request.ExpiresAt))
+            return BadRequest(new { error = "Record count must be between 1 and 1000, and expiry must be in the future." });
         if (await _schemaService.GetSchemaAsync(schemaId) is null) return NotFound();
-        var link = _linkService.Update(schemaId, linkId, request.DefaultRecordCount, request.ExpiresAt, request.GenerationMode);
+        var link = _linkService.Update(schemaId, linkId, request.DefaultRecordCount, request.ExpiresAt, generationMode: null);
         return link is null ? NotFound() : Ok(ToResponse(link));
     }
 
@@ -59,13 +60,22 @@ public class ApiLinkController : ControllerBase
     }
 
     [HttpPost("{linkId:guid}/regenerate")]
-    public async Task<IActionResult> Regenerate(Guid schemaId, Guid linkId, CancellationToken cancellationToken)
+    [EnableRateLimiting("dataset-regeneration")]
+    public async Task<IActionResult> Regenerate(Guid schemaId, Guid linkId, [FromQuery] int? generationMode, CancellationToken cancellationToken)
     {
+        if (generationMode.HasValue && !ApiLinkService.ValidGenerationMode(generationMode.Value))
+            return BadRequest(new { error = "Generation mode must be 0 (random) or 1 (AI)." });
+
         var link = _linkService.GetActive(schemaId, linkId);
         if (link is null) return NotFound();
         try
         {
-            var dataset = await _datasetService.GetOrCreateAsync(link, link.DefaultRecordCount, regenerate: true, cancellationToken: cancellationToken);
+            var dataset = await _datasetService.GetOrCreateAsync(
+                link,
+                link.DefaultRecordCount,
+                regenerate: true,
+                cancellationToken: cancellationToken,
+                generationModeOverride: generationMode);
             return dataset is null ? NotFound() : Ok(dataset);
         }
         catch (NotSupportedException exception)

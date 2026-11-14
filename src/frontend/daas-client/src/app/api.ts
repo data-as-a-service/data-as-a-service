@@ -66,14 +66,16 @@ export const schemaApi = {
 
 export const apiLinkApi = {
   list: (schemaId: string) => request<ApiLink[]>(`/api/schema/${encodeURIComponent(schemaId)}/links`),
-  create: (schemaId: string, defaultRecordCount: number, expiresAt: string | null, generationMode: number) =>
+  create: (schemaId: string, defaultRecordCount: number, expiresAt: string | null) =>
     request<ApiLinkWithUrl>(`/api/schema/${encodeURIComponent(schemaId)}/links`, {
-      method: 'POST', body: JSON.stringify({ defaultRecordCount, expiresAt, generationMode }),
+      method: 'POST', body: JSON.stringify({ defaultRecordCount, expiresAt }),
     }),
-  update: (schemaId: string, linkId: string, defaultRecordCount: number, expiresAt: string | null, generationMode: number) =>
+  update: (schemaId: string, linkId: string, defaultRecordCount: number, expiresAt: string | null) =>
     request<ApiLink>(`/api/schema/${encodeURIComponent(schemaId)}/links/${encodeURIComponent(linkId)}`, {
-      method: 'PUT', body: JSON.stringify({ defaultRecordCount, expiresAt, generationMode }),
+      method: 'PUT', body: JSON.stringify({ defaultRecordCount, expiresAt }),
     }),
+  regenerate: (schemaId: string, linkId: string, generationMode: number) =>
+    request<Record<string, unknown>[]>(`/api/schema/${encodeURIComponent(schemaId)}/links/${encodeURIComponent(linkId)}/regenerate?generationMode=${generationMode}`, { method: 'POST' }),
   revoke: (schemaId: string, linkId: string) =>
     request<void>(`/api/schema/${encodeURIComponent(schemaId)}/links/${encodeURIComponent(linkId)}`, { method: 'DELETE' }),
   rotate: (schemaId: string, linkId: string) =>

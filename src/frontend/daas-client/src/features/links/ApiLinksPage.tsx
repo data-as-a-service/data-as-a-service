@@ -7,12 +7,12 @@ export function ApiLinksPage() {
   const [schemaId, setSchemaId] = useState('');
   const [links, setLinks] = useState<ApiLink[]>([]);
   const [count, setCount] = useState(10);
-  const [generationMode, setGenerationMode] = useState(0);
   const [expiry, setExpiry] = useState('');
   const [lastUrl, setLastUrl] = useState('');
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
 
   useEffect(() => {
     schemaApi.list().then(items => {
@@ -38,7 +38,7 @@ export function ApiLinksPage() {
   async function create() {
     setBusy(true); setError(''); setLastUrl('');
     try {
-      const created = await apiLinkApi.create(schemaId, count, expiry ? new Date(expiry).toISOString() : null, generationMode);
+      const created = await apiLinkApi.create(schemaId, count, expiry ? new Date(expiry).toISOString() : null);
       setLastUrl(created.url); await refresh();
     } catch (err) { setError(err instanceof Error ? err.message : 'Could not create API link.'); }
     finally { setBusy(false); }
@@ -47,10 +47,6 @@ export function ApiLinksPage() {
   async function update(link: ApiLink) {
     const nextCount = Number(window.prompt('Default records per request (1–1000)', String(link.defaultRecordCount)));
     if (!Number.isInteger(nextCount) || nextCount < 1 || nextCount > 1000) return;
-    const modeInput = window.prompt('Generation mode: 0 = Random, 1 = Ollama (falls back to Random)', String(link.generationMode));
-    if (modeInput === null) return;
-    const nextMode = Number(modeInput);
-    if (![0, 1].includes(nextMode)) return;
     const expiryDate = window.prompt('Expiry date (YYYY-MM-DD; leave blank for no expiry)', link.expiresAt?.slice(0, 10) ?? '');
     if (expiryDate === null) return;
     const nextExpiry = expiryDate.trim() ? new Date(`${expiryDate.trim()}T23:59:59Z`) : null;
@@ -59,8 +55,18 @@ export function ApiLinksPage() {
       return;
     }
     setBusy(true); setError('');
-    try { await apiLinkApi.update(schemaId, link.id, nextCount, nextExpiry?.toISOString() ?? null, nextMode); await refresh(); }
+    try { await apiLinkApi.update(schemaId, link.id, nextCount, nextExpiry?.toISOString() ?? null); await refresh(); }
     catch (err) { setError(err instanceof Error ? err.message : 'Could not update link.'); }
+    finally { setBusy(false); }
+  }
+
+  async function regenerate(link: ApiLink, mode: number) {
+    setBusy(true); setError(''); setNotice('');
+    try {
+      const dataset = await apiLinkApi.regenerate(schemaId, link.id, mode);
+      const generator = mode === 1 ? 'AI mode (configured provider with random fallback)' : 'Random mode';
+      setNotice(`Saved ${dataset.length} records using ${generator}. Public GET requests now return this dataset until it is regenerated or invalidated by a schema change.`);
+    } catch (err) { setError(err instanceof Error ? err.message : 'Could not regenerate the saved dataset.'); }
     finally { setBusy(false); }
   }
 
@@ -99,22 +105,20 @@ export function ApiLinksPage() {
           <input id="link-count" className="text-input" type="number" min={1} max={1000} value={count} onChange={event => setCount(Number(event.target.value))} />
           <label className="input-label link-label" htmlFor="link-expiry">Expires at (optional)</label>
           <input id="link-expiry" className="text-input" type="datetime-local" value={expiry} onChange={event => setExpiry(event.target.value)} />
-          <label className="input-label link-label" htmlFor="link-generation-mode">Generation mode</label>
-          <select id="link-generation-mode" className="select-input" value={generationMode} onChange={event => setGenerationMode(Number(event.target.value))}>
-            <option value={0}>Random</option><option value={1}>Ollama (falls back to Random)</option>
-          </select>
-          <p className="helper-text">Ollama must be enabled in API configuration. Maximum: 1,000 records.</p>
+          <p className="helper-text">Choose Random or AI each time you regenerate the saved dataset. Public GET requests return the saved data. AI uses the API operator's configured provider and falls back to Random if unavailable.</p>
+          <p className="helper-text">Maximum: 1,000 records.</p>
           <button className="button button-primary create-submit" disabled={busy || count < 1 || count > 1000} onClick={() => void create()}>Create API link <span>↗</span></button>
         </div>}
         {lastUrl && <div className="link-created"><strong>Copy this URL now</strong><p>The secret is shown only at creation or rotation.</p><code>{lastUrl}</code><button className="button button-quiet" onClick={() => void copy(lastUrl)}>Copy URL</button></div>}
       </section>
       <section className="panel list-panel">
         <div className="panel-heading"><div><h2>Links for this schema</h2><p>Revoked links can no longer serve data.</p></div></div>
+        {notice && <p className="helper-text" role="status">{notice}</p>}
         {loading ? <LoadingState>Loading links…</LoadingState> : links.length === 0 ? <EmptyState>No API links for this schema yet.</EmptyState> : <div className="schema-list">{links.map(link => {
           const expired = Boolean(link.expiresAt && new Date(link.expiresAt).getTime() <= Date.now());
           return <article className="schema-card" key={link.id}>
-          <div className="schema-meta"><h3>{!link.isActive ? 'Revoked link' : expired ? 'Expired link' : 'Active public link'}</h3><span>{link.defaultRecordCount} records · {link.generationMode === 1 ? 'Ollama with random fallback' : 'Random'} · {link.expiresAt ? `Expires ${new Date(link.expiresAt).toLocaleString()}` : 'No expiry'} · Created {new Date(link.createdAt).toLocaleDateString()}</span></div>
-          <div className="schema-actions">{link.isActive && <><button className="button button-quiet" disabled={busy} onClick={() => void update(link)}>Settings</button><button className="button button-quiet" disabled={busy} onClick={() => void rotate(link)}>Rotate</button><button className="button button-quiet" disabled={busy} onClick={() => void revoke(link)}>Revoke</button></>}</div>
+          <div className="schema-meta"><h3>{!link.isActive ? 'Revoked link' : expired ? 'Expired link' : 'Active public link'}</h3><span>{link.defaultRecordCount} records · Generator chosen per regeneration · {link.expiresAt ? `Expires ${new Date(link.expiresAt).toLocaleString()}` : 'No expiry'} · Created {new Date(link.createdAt).toLocaleDateString()}</span></div>
+          <div className="schema-actions">{link.isActive && !expired && <><button className="button button-quiet" disabled={busy} onClick={() => void regenerate(link, 0)}>Regenerate · Random</button><button className="button button-quiet" disabled={busy} onClick={() => void regenerate(link, 1)}>Regenerate · AI</button><button className="button button-quiet" disabled={busy} onClick={() => void update(link)}>Settings</button><button className="button button-quiet" disabled={busy} onClick={() => void rotate(link)}>Rotate</button><button className="button button-quiet" disabled={busy} onClick={() => void revoke(link)}>Revoke</button></>}</div>
         </article>})}</div>}
       </section>
     </div>
