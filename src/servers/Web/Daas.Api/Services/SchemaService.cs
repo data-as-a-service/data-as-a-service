@@ -14,16 +14,16 @@ public class SchemaService
     private readonly FieldGeneratorFactory _factory;
     private readonly JsonFileStorageService _storage;
     private readonly ILogger<SchemaService> _logger;
-    private readonly OllamaDataGenerator _ollamaGenerator;
+    private readonly IAiDataGenerator _aiDataGenerator;
 
-    public SchemaService(IConfiguration configuration, FieldGeneratorFactory factory, JsonFileStorageService storage, ILogger<SchemaService> logger, OllamaDataGenerator ollamaGenerator)
+    public SchemaService(IConfiguration configuration, FieldGeneratorFactory factory, JsonFileStorageService storage, ILogger<SchemaService> logger, IAiDataGenerator aiDataGenerator)
     {
         _connectionString = configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException("The DefaultConnection connection string is not configured.");
         _factory = factory;
         _storage = storage;
         _logger = logger;
-        _ollamaGenerator = ollamaGenerator;
+        _aiDataGenerator = aiDataGenerator;
     }
 
     public async Task<Guid> CreateSchemaAsync(Schema schema, CancellationToken cancellationToken = default)
@@ -176,7 +176,7 @@ public class SchemaService
         if (schema is null) return null;
         if (generationMode == 1)
         {
-            var generated = await _ollamaGenerator.TryGenerateAsync(schema, howmany, cancellationToken);
+            var generated = await _aiDataGenerator.TryGenerateAsync(schema, howmany, cancellationToken);
             if (generated is not null) return generated;
         }
         return GenerateData(schema, howmany);
