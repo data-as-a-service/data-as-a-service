@@ -94,7 +94,12 @@ public class OllamaDataGeneratorTests
             ["Ollama:BaseUrl"] = "http://ollama.test",
             ["Ollama:Model"] = "test-model"
         }).Build();
-        return new OllamaDataGenerator(client, configuration, NullLogger<OllamaDataGenerator>.Instance);
+        return new OllamaDataGenerator(new StaticHttpClientFactory(client), configuration, NullLogger<OllamaDataGenerator>.Instance);
+    }
+
+    private sealed class StaticHttpClientFactory(HttpClient client) : IHttpClientFactory
+    {
+        public HttpClient CreateClient(string name) => client;
     }
 
     private sealed class StubHandler(Func<HttpRequestMessage, HttpResponseMessage> respond) : HttpMessageHandler

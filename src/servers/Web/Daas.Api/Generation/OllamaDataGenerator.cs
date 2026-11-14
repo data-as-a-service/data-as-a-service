@@ -4,16 +4,16 @@ using Daas.Domain.Entities;
 
 namespace Daas.Api.Generation;
 
-public sealed class OllamaDataGenerator
+public sealed class OllamaDataGenerator : IAiDataGenerator
 {
     private const int MaxResponseCharacters = 4 * 1024 * 1024;
-    private readonly HttpClient _httpClient;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly IConfiguration _configuration;
     private readonly ILogger<OllamaDataGenerator> _logger;
 
-    public OllamaDataGenerator(HttpClient httpClient, IConfiguration configuration, ILogger<OllamaDataGenerator> logger)
+    public OllamaDataGenerator(IHttpClientFactory httpClientFactory, IConfiguration configuration, ILogger<OllamaDataGenerator> logger)
     {
-        _httpClient = httpClient;
+        _httpClientFactory = httpClientFactory;
         _configuration = configuration;
         _logger = logger;
     }
@@ -26,13 +26,14 @@ public sealed class OllamaDataGenerator
         {
             var baseUrl = _configuration["Ollama:BaseUrl"] ?? "http://localhost:11434";
             var model = _configuration["Ollama:Model"] ?? "llama3.2";
-            var prompt = BuildPrompt(schema, count);
-            using var response = await _httpClient.PostAsJsonAsync($"{baseUrl.TrimEnd('/')}/api/generate", new
+            var prompt = AiGenerationPrompt.Build(schema, count);
+            var client = _httpClientFactory.CreateClient("Ollama");
+            using var response = await client.PostAsJsonAsync($"{baseUrl.TrimEnd('/')}/api/generate", new
             {
                 model,
                 prompt,
                 stream = false,
-                format = BuildJsonSchema(schema, count)
+                format = AiGenerationJsonSchema.Build(schema, count)
             }, cancellationToken);
             response.EnsureSuccessStatusCode();
 
@@ -50,7 +51,7 @@ public sealed class OllamaDataGenerator
             using var envelope = await JsonDocument.ParseAsync(output, cancellationToken: cancellationToken);
             if (!envelope.RootElement.TryGetProperty("response", out var generatedText) || generatedText.ValueKind != JsonValueKind.String)
                 return null;
-            var result = TryValidateOutput(generatedText.GetString()!, schema, count);
+            var result = AiGenerationOutputValidator.TryValidate(generatedText.GetString()!, schema, count);
             if (result is null) _logger.LogWarning("Ollama returned output that did not match the requested schema; using the built-in generator.");
             return result;
         }
@@ -66,91 +67,6 @@ public sealed class OllamaDataGenerator
         }
     }
 
-    private static string BuildPrompt(Schema schema, int count)
-    {
-        var fields = string.Join(", ", schema.Fields.Select(field => $"{JsonSerializer.Serialize(field.FieldName)}: {field.FieldType}"));
-        return $"Return exactly {count} realistic JSON objects as an array. Each object must contain exactly these fields with values matching their types: {{{fields}}}. Return JSON only.";
-    }
-
-    private static object BuildJsonSchema(Schema schema, int count)
-    {
-        var properties = schema.Fields.ToDictionary(
-            field => field.FieldName,
-            field => (object)(field.FieldType switch
-            {
-                FieldTypes.INT => new { type = "integer" },
-                FieldTypes.FLOAT or FieldTypes.DOUBLE => new { type = "number" },
-                FieldTypes.BOOLEAN => new { type = "boolean" },
-                FieldTypes.GUID or FieldTypes.UUID => new { type = "string", format = "uuid" },
-                FieldTypes.DATE => new { type = "string", format = "date" },
-                FieldTypes.DATETIME => new { type = "string", format = "date-time" },
-                FieldTypes.CHAR => new { type = "string", minLength = 1, maxLength = 1 },
-                _ => new { type = "string" }
-            }),
-            StringComparer.Ordinal);
-
-        return new
-        {
-            type = "array",
-            minItems = count,
-            maxItems = count,
-            items = new
-            {
-                type = "object",
-                properties,
-                required = schema.Fields.Select(field => field.FieldName).ToArray(),
-                additionalProperties = false
-            }
-        };
-    }
-
     public static List<object>? TryValidateOutput(string json, Schema schema, int count)
-    {
-        try
-        {
-            using var document = JsonDocument.Parse(json);
-            var root = document.RootElement;
-            if (root.ValueKind != JsonValueKind.Array || root.GetArrayLength() != count) return null;
-
-            var expectedFields = schema.Fields.ToDictionary(field => field.FieldName, StringComparer.Ordinal);
-            var records = new List<object>(count);
-            foreach (var item in root.EnumerateArray())
-            {
-                if (item.ValueKind != JsonValueKind.Object) return null;
-                var values = new Dictionary<string, object>(StringComparer.Ordinal);
-                foreach (var property in item.EnumerateObject())
-                {
-                    if (!expectedFields.TryGetValue(property.Name, out var field) || values.ContainsKey(property.Name) || !MatchesType(property.Value, field.FieldType))
-                        return null;
-                    values.Add(property.Name, property.Value.Clone());
-                }
-
-                if (values.Count != expectedFields.Count) return null;
-                records.Add(values);
-            }
-
-            return records;
-        }
-        catch (JsonException)
-        {
-            return null;
-        }
-        catch (ArgumentException)
-        {
-            return null;
-        }
-    }
-
-    private static bool MatchesType(JsonElement value, FieldTypes type) => type switch
-    {
-        FieldTypes.INT => value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out _),
-        FieldTypes.FLOAT => value.ValueKind == JsonValueKind.Number && value.TryGetSingle(out _),
-        FieldTypes.DOUBLE => value.ValueKind == JsonValueKind.Number && value.TryGetDouble(out _),
-        FieldTypes.BOOLEAN => value.ValueKind is JsonValueKind.True or JsonValueKind.False,
-        FieldTypes.STRING => value.ValueKind == JsonValueKind.String,
-        FieldTypes.CHAR => value.ValueKind == JsonValueKind.String && value.GetString()?.Length == 1,
-        FieldTypes.GUID or FieldTypes.UUID => value.ValueKind == JsonValueKind.String && Guid.TryParse(value.GetString(), out _),
-        FieldTypes.DATE or FieldTypes.DATETIME => value.ValueKind == JsonValueKind.String && DateTime.TryParse(value.GetString(), out _),
-        _ => false
-    };
+        => AiGenerationOutputValidator.TryValidate(json, schema, count);
 }

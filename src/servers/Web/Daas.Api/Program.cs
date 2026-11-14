@@ -49,10 +49,24 @@ builder.Services.AddRateLimiter(options =>
 
 builder.Services.AddSingleton<FieldGeneratorFactory>();
 builder.Services.AddSingleton<Random>();
-builder.Services.AddHttpClient<OllamaDataGenerator>((services, client) =>
+builder.Services.AddHttpClient("Ollama", (services, client) =>
 {
     var seconds = services.GetRequiredService<IConfiguration>().GetValue<int?>("Ollama:TimeoutSeconds") ?? 15;
     client.Timeout = TimeSpan.FromSeconds(Math.Clamp(seconds, 1, 120));
+});
+builder.Services.AddHttpClient("GoogleAiStudio", (services, client) =>
+{
+    var seconds = services.GetRequiredService<IConfiguration>().GetValue<int?>("GoogleAiStudio:TimeoutSeconds") ?? 20;
+    client.Timeout = TimeSpan.FromSeconds(Math.Clamp(seconds, 1, 120));
+});
+builder.Services.AddSingleton<OllamaDataGenerator>();
+builder.Services.AddSingleton<GoogleAiStudioDataGenerator>();
+builder.Services.AddSingleton<IAiDataGenerator>(services =>
+{
+    var provider = services.GetRequiredService<IConfiguration>()["AiGeneration:Provider"];
+    return provider?.Equals(AiGenerationProvider.Ollama, StringComparison.OrdinalIgnoreCase) == true
+        ? services.GetRequiredService<OllamaDataGenerator>()
+        : services.GetRequiredService<GoogleAiStudioDataGenerator>();
 });
 builder.Services.AddSingleton<JsonFileStorageService>();
 builder.Services.AddSingleton<SchemaService>();
