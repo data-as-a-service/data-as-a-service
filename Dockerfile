@@ -6,8 +6,9 @@ WORKDIR /src
 COPY data-as-a-service.sln .
 COPY src ./src/
 
-# Restore dependencies
-RUN dotnet restore ./data-as-a-service.sln
+# Restore the API project and its referenced projects. The test projects are not
+# included in the runtime image build context.
+RUN dotnet restore src/servers/Web/Daas.Api/Daas.Api.csproj
 
 # Build and publish
 RUN dotnet publish src/servers/Web/Daas.Api/Daas.Api.csproj -c Release -o /app --no-restore
