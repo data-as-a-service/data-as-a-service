@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Daas.Api.Services;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
 namespace Daas.Api.Tests;
@@ -107,7 +108,7 @@ public sealed class JsonFileStorageServiceTests : IDisposable
         var values = new Dictionary<string, string?> { ["JsonStorage:RootPath"] = _root };
         if (maxBytes.HasValue) values["JsonStorage:MaxDocumentBytes"] = maxBytes.Value.ToString();
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(values).Build();
-        return new JsonFileStorageService(configuration);
+        return new JsonFileStorageService(configuration, NullLogger<JsonFileStorageService>.Instance);
     }
 
     public void Dispose()

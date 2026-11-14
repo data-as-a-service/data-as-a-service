@@ -65,10 +65,20 @@ public class SchemaService
 
         if (metadata.SchemaStorageKey is Guid key)
         {
+            _logger.LogDebug("Loading schema {SchemaId} from JSON storage key {StorageKey}.", id, key);
             var document = await _storage.LoadSchemaAsync(key, cancellationToken)
-                ?? throw new FileNotFoundException("The schema document referenced by SQL metadata is missing.");
-            var schema = document.Deserialize<Schema>()
-                ?? throw new InvalidDataException("The stored schema document is invalid.");
+                ?? throw new FileNotFoundException($"The schema document referenced by SQL metadata is missing. SchemaId={id}; StorageKey={key}.");
+            Schema schema;
+            try
+            {
+                schema = document.Deserialize<Schema>()
+                    ?? throw new InvalidDataException("The stored schema document is invalid.");
+            }
+            catch (Exception exception) when (exception is JsonException or InvalidDataException)
+            {
+                _logger.LogError(exception, "Could not deserialize schema JSON for schema {SchemaId}, storage key {StorageKey}.", id, key);
+                throw;
+            }
             schema.Id = metadata.Id;
             schema.Name = metadata.Name;
             return schema;
@@ -109,8 +119,23 @@ public class SchemaService
         var schemas = new List<Schema>(ids.Count);
         foreach (var id in ids)
         {
-            var schema = await GetSchemaAsync(id, cancellationToken);
-            if (schema is not null) schemas.Add(schema);
+            try
+            {
+                var schema = await GetSchemaAsync(id, cancellationToken);
+                if (schema is not null) schemas.Add(schema);
+            }
+            catch (FileNotFoundException exception)
+            {
+                _logger.LogError(exception, "Schema listing skipped schema {SchemaId} because its SQL-referenced JSON file is missing. Check the configured persistent storage mount and the recovery script.", id);
+            }
+            catch (InvalidDataException exception)
+            {
+                _logger.LogError(exception, "Schema listing skipped schema {SchemaId} because its stored JSON is invalid.", id);
+            }
+            catch (JsonException exception)
+            {
+                _logger.LogError(exception, "Schema listing skipped schema {SchemaId} because its stored JSON could not be parsed.", id);
+            }
         }
         return schemas;
     }

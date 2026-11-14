@@ -37,7 +37,10 @@ public sealed class DatasetService
         await using var lookupConnection = new SqlConnection(_connectionString);
         var current = await GetCurrentAsync(lookupConnection, link.Id, recordCount);
         if (!regenerate && IsForCurrentSchema(current))
-            return await LoadCurrentAsync(current!, cancellationToken);
+        {
+            var cached = await TryLoadCurrentAsync(current!, cancellationToken);
+            if (cached is not null) return cached;
+        }
 
         // Only cache misses and explicit regenerations serialize. The follow-up lookup
         // makes simultaneous first requests share the first completed dataset.
@@ -46,7 +49,10 @@ public sealed class DatasetService
         {
             current = await GetCurrentAsync(lookupConnection, link.Id, recordCount);
             if (!regenerate && IsForCurrentSchema(current))
-                return await LoadCurrentAsync(current!, cancellationToken);
+            {
+                var cached = await TryLoadCurrentAsync(current!, cancellationToken);
+                if (cached is not null) return cached;
+            }
 
             var schema = await _schemaService.GetSchemaAsync(link.SchemaId, cancellationToken);
             if (schema is null) return null;
@@ -117,17 +123,24 @@ public sealed class DatasetService
 
     private static Task<DatasetRecord?> GetCurrentAsync(SqlConnection connection, Guid linkId, int recordCount) =>
         connection.QuerySingleOrDefaultAsync<DatasetRecord>(
-            "SELECT TOP (1) d.DatasetId, d.StorageKey, d.SchemaVersion, d.Version, s.SchemaVersion AS CurrentSchemaVersion FROM dbo.Datasets d JOIN dbo.Schemas s ON s.Id = d.SchemaId WHERE d.ApiLinkId = @ApiLinkId AND d.RecordCount = @RecordCount AND d.IsCurrent = 1 AND (d.ExpiresAtUtc IS NULL OR d.ExpiresAtUtc > SYSUTCDATETIME()) ORDER BY d.Version DESC;",
+            "SELECT TOP (1) d.DatasetId, d.ApiLinkId, d.StorageKey, d.RecordCount, d.SchemaVersion, d.Version, s.SchemaVersion AS CurrentSchemaVersion FROM dbo.Datasets d JOIN dbo.Schemas s ON s.Id = d.SchemaId WHERE d.ApiLinkId = @ApiLinkId AND d.RecordCount = @RecordCount AND d.IsCurrent = 1 AND (d.ExpiresAtUtc IS NULL OR d.ExpiresAtUtc > SYSUTCDATETIME()) ORDER BY d.Version DESC;",
             new { ApiLinkId = linkId, RecordCount = recordCount });
 
     private static bool IsForCurrentSchema(DatasetRecord? record) =>
         record is not null && record.SchemaVersion == record.CurrentSchemaVersion;
 
-    private async Task<JsonNode> LoadCurrentAsync(DatasetRecord record, CancellationToken cancellationToken) =>
-        await _storage.LoadDatasetAsync(record.StorageKey, cancellationToken)
-        ?? throw new FileNotFoundException("The saved dataset file is missing.");
+    private async Task<JsonNode?> TryLoadCurrentAsync(DatasetRecord record, CancellationToken cancellationToken)
+    {
+        var document = await _storage.LoadDatasetAsync(record.StorageKey, cancellationToken);
+        if (document is not null) return document;
 
-    private sealed record DatasetRecord(Guid DatasetId, Guid StorageKey, int SchemaVersion, int Version, int CurrentSchemaVersion);
+        _logger.LogWarning(
+            "Cached dataset file is missing for API link {LinkId}, dataset version {DatasetVersion}, record count {RecordCount}, storage key {StorageKey}. The next request can regenerate it.",
+            record.ApiLinkId, record.Version, record.RecordCount, record.StorageKey);
+        return null;
+    }
+
+    private sealed record DatasetRecord(Guid DatasetId, Guid ApiLinkId, Guid StorageKey, int RecordCount, int SchemaVersion, int Version, int CurrentSchemaVersion);
 
     private DateTime? GetExpirationUtc()
     {

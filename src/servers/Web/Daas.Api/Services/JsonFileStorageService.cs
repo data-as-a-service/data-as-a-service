@@ -8,14 +8,16 @@ public sealed class JsonFileStorageService
     private const long DefaultMaxDocumentBytes = 50 * 1024 * 1024;
     private readonly string _root;
     private readonly long _maxDocumentBytes;
+    private readonly ILogger<JsonFileStorageService> _logger;
 
-    public JsonFileStorageService(IConfiguration configuration)
+    public JsonFileStorageService(IConfiguration configuration, ILogger<JsonFileStorageService> logger)
     {
         var configuredRoot = configuration["JsonStorage:RootPath"];
         _root = Path.GetFullPath(string.IsNullOrWhiteSpace(configuredRoot)
             ? Path.Combine(AppContext.BaseDirectory, "App_Data", "json")
             : configuredRoot);
         _maxDocumentBytes = Math.Max(1, configuration.GetValue<long?>("JsonStorage:MaxDocumentBytes") ?? DefaultMaxDocumentBytes);
+        _logger = logger;
     }
 
     public Task SaveSchemaAsync(Guid storageKey, JsonNode document, CancellationToken cancellationToken = default) =>
@@ -63,12 +65,28 @@ public sealed class JsonFileStorageService
     private async Task<JsonNode?> LoadAsync(string category, Guid storageKey, CancellationToken cancellationToken)
     {
         var path = GetPath(category, storageKey);
-        if (!File.Exists(path)) return null;
+        if (!File.Exists(path))
+        {
+            _logger.LogError("JSON {DocumentCategory} file referenced by SQL metadata is missing. Storage key {StorageKey}; configured root {StorageRoot}.", category, storageKey, _root);
+            return null;
+        }
         var info = new FileInfo(path);
-        if (info.Length > _maxDocumentBytes) throw new InvalidDataException("Stored JSON document exceeds the configured size limit.");
+        if (info.Length > _maxDocumentBytes)
+        {
+            _logger.LogError("Stored JSON {DocumentCategory} file exceeds the configured size limit. Storage key {StorageKey}; size {DocumentBytes}; limit {MaxDocumentBytes}.", category, storageKey, info.Length, _maxDocumentBytes);
+            throw new InvalidDataException("Stored JSON document exceeds the configured size limit.");
+        }
         var bytes = await File.ReadAllBytesAsync(path, cancellationToken);
-        ValidateJson(bytes);
-        return JsonNode.Parse(bytes);
+        try
+        {
+            ValidateJson(bytes);
+            return JsonNode.Parse(bytes);
+        }
+        catch (Exception exception) when (exception is JsonException or InvalidDataException)
+        {
+            _logger.LogError(exception, "JSON {DocumentCategory} file referenced by SQL metadata is invalid. Storage key {StorageKey}; configured root {StorageRoot}.", category, storageKey, _root);
+            throw;
+        }
     }
 
     private Task DeleteAsync(string category, Guid storageKey, CancellationToken cancellationToken)
