@@ -37,6 +37,8 @@ The application uses Dapper and SQL Server. Prefer straightforward SQL and Dappe
 
 Use `scripts/setup-database.ps1 -Server "<sql-server>"` to initialize a database and apply versioned SQL updates from `scripts/database-updates`. The API must not run schema-changing SQL automatically at startup. Update scripts should be additive, transactional where practical, safe to apply to an existing database, and recorded in `dbo.SchemaMigrations`.
 
+Database migrations are a separate production deployment concern. The current production topology is Azure SQL, a Render-hosted API, and a Cloudflare-hosted frontend. When API code expects a new database shape, apply the matching numbered migration to production Azure SQL before or as part of the API deployment; a Render deploy does not change SQL Server. The current PowerShell setup script uses Windows integrated authentication and is convenient locally, but production automation needs a secure Azure SQL credential or identity and a runner that can reach Azure SQL. Prefer a CI/CD migration step or a Render pre-deploy command once that authentication is configured. Keep migrations backward-compatible during rolling deployments: expand the schema first, deploy code, then remove old structures in a later release. Never put production passwords in the repository or leave broad firewall rules permanently enabled.
+
 # Existing Factory
 
 The existing Factory pattern in the API's `Generation` code is intentional. It creates random/mock data values for schema fields. Preserve the factory, its mappings, and its behavior unless explicitly asked to change them.
