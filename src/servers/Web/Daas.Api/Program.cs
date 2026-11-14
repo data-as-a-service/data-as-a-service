@@ -1,8 +1,24 @@
 using Daas.Api.Services;
 using Daas.Api.Generation;
+using Serilog;
 using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Host.UseSerilog((context, services, configuration) =>
+{
+    configuration
+        .ReadFrom.Configuration(context.Configuration)
+        .ReadFrom.Services(services)
+        .Enrich.FromLogContext()
+        .Enrich.WithProperty("Application", "Daas.Api");
+
+    var seqServerUrl = context.Configuration["Seq:ServerUrl"];
+    if (!string.IsNullOrWhiteSpace(seqServerUrl))
+    {
+        configuration.WriteTo.Seq(seqServerUrl, apiKey: context.Configuration["Seq:ApiKey"]);
+    }
+});
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -38,6 +54,12 @@ builder.Services.AddScoped<ApiLinkService>();
 
 
 var app = builder.Build();
+
+app.UseSerilogRequestLogging(options =>
+{
+    // Public API links contain bearer keys in the URL. Do not write request paths to logs.
+    options.MessageTemplate = "HTTP {RequestMethod} request responded {StatusCode} in {Elapsed:0.0000} ms";
+});
 
 app.UseSwagger();
 app.UseSwaggerUI();
