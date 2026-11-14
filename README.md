@@ -41,16 +41,21 @@ docker run --rm --name daas-api -p 8081:8080 `
 
 Open <http://localhost:8081/swagger/index.html>. The host port (`8081`) forwards to the API's container port (`8080`). The image serves the API and Swagger; it does not include the React development server. Swagger can load without SQL Server, but schema and data operations require a reachable SQL Server with all database updates applied. Configure `ConnectionStrings__DefaultConnection` for the container environment; the Windows integrated-authentication connection string in `appsettings.json` is not automatically usable from a Linux container. For a SQL Server running on the same Windows host, `host.docker.internal` is the host name containers use to reach Windows. Do not put database passwords in the image or source repository.
 
-## Run the API in Docker
+## Run the API and frontend in Docker
 
-Build and run the API image locally:
+The root `Dockerfile` builds the API. The frontend has its own Dockerfile and Nginx config; Compose runs both and forwards frontend API and Swagger requests to the API container.
+
+Copy `.env.example` to `.env`, then set a SQL Server connection string that the Linux container can use. For SQL Server on the Windows host with Docker Desktop, use `host.docker.internal` and SQL authentication. Configure SQL Server TCP/IP and apply database updates separately with the setup script above; the API does not change database schema at startup.
+
+Start the stack from the repository root:
 
 ```powershell
-docker build -t daas-api .
-docker run --rm --name daas-api -p 8081:8080 daas-api
+Copy-Item .env.example .env
+# Edit .env with your SQL Server login and password.
+docker compose up --build
 ```
 
-Open <http://localhost:8081/swagger/index.html>. The host port (`8081`) forwards to the API's HTTP port (`8080`) inside the container. The image contains the API and Swagger, not the React development server. Swagger can load without SQL Server, but schema and data operations require a reachable database with all updates applied. Set the `ConnectionStrings__DefaultConnection` environment variable to a connection string usable from the container; the Windows integrated-authentication string in `appsettings.json` does not automatically work inside a Linux container. For SQL Server running on the same Windows host, `host.docker.internal` is the host name containers use to reach Windows. The API does not apply database migrations automatically.
+Open <http://localhost:8088> for the React UI or <http://localhost:8088/swagger/index.html> for Swagger. Both are served through the frontend container; the API stays on the private Compose network. The frontend image serves compiled static files, so Node.js is only needed during the image build.
 
 ## Run the API and React frontend
 
