@@ -1,59 +1,47 @@
-﻿using Daas.Api.Storage;
-using Daas.Application.Users.Queries;
-using Daas.Infrastructure.Persistence;
+using Daas.Api.Services;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using System.Dynamic;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Daas.Api.Controllers;
 
 [ApiController]
-[Route("mock")]
+[Route("api/v1/data")]
 public class MockController : ControllerBase
 {
-    private readonly FieldGeneratorFactory _factory;
-    private readonly AppDbContext _context;
+    private readonly ApiLinkService _linkService;
+    private readonly DatasetService _datasetService;
+    private readonly ILogger<MockController> _logger;
 
-    public MockController(FieldGeneratorFactory factory, AppDbContext context)
+    public MockController(ApiLinkService linkService, DatasetService datasetService, ILogger<MockController> logger)
     {
-        _factory = factory;
-        _context = context;
+        _linkService = linkService;
+        _datasetService = datasetService;
+        _logger = logger;
     }
-    [HttpGet("{id}")]
-    public IActionResult GetMockData(Guid id)
+
+    [HttpGet("{publicKey}")]
+    [EnableRateLimiting("public-mock")]
+    public async Task<IActionResult> Get(string publicKey, [FromQuery] int? count, CancellationToken cancellationToken)
     {
-        var schema = _context.Schemas
-            .Include(x => x.Fields)
-            .FirstOrDefault(x => x.Id == id);
-
-        if (schema == null)
+        if (!ApiLinkService.ValidPublicKey(publicKey)) return NotFound();
+        var link = _linkService.GetActiveByKey(publicKey);
+        if (link is null) return NotFound();
+        var recordCount = count ?? link.DefaultRecordCount;
+        if (!ApiLinkService.ValidCount(recordCount))
+            return BadRequest(new { error = $"Count must be between 1 and {ApiLinkService.MaxRecordCount}." });
+        try
         {
-            return NotFound();
+            var data = await _datasetService.GetOrCreateAsync(link, recordCount, cancellationToken: cancellationToken);
+            return data is null ? NotFound() : Ok(data);
         }
-
-        int howmany = 10;
-
-        var result = new List<object>();
-
-        for (int i = 0; i < howmany; i++)
+        catch (NotSupportedException exception)
         {
-            var row =
-                new ExpandoObject()
-                as IDictionary<string, object>;
-
-            foreach (var field in schema.Fields)
-            {
-                var value =
-                    _factory
-                        .Get((FieldType)field.FieldType)
-                        .Generator();
-
-                row.Add(field.FieldName, value);
-            }
-
-            result.Add(row);
+            return BadRequest(new { error = exception.Message });
         }
-
-        return Ok(result);
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException or System.Text.Json.JsonException)
+        {
+            _logger.LogError(exception, "Persisted dataset for API link {LinkId} is unavailable.", link.Id);
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { error = "The persisted dataset is unavailable. Check the configured JSON storage and retry." });
+        }
     }
 }
