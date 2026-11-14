@@ -2,7 +2,7 @@
 
 Date: 2026-10-10
 
-This document records the current product baseline and release plan. V1's core workflow is schema creation → API-link creation → external GET returning generated JSON. The React MVP, public API-link workflow, and repeatable database setup are implemented. The immediate focus is verifying and releasing that core workflow. Authentication/authorization, nested JSON, and Ollama are add-ons after the core product is live; access control remains the final planned feature phase as requested.
+This document records the current product baseline and release plan. V1's core workflow is schema creation → API-link creation → external GET returning generated JSON. The React MVP, public API-link workflow, and repeatable database setup are implemented. The immediate focus is verifying and releasing that core workflow. Authentication/authorization and nested JSON are future product areas; access control remains the final planned feature phase as requested.
 
 ## Current implementation
 
@@ -27,7 +27,7 @@ The API currently exposes:
 
 The database uses `dbo.Schemas`, legacy `dbo.FieldDefinitions`, `dbo.ApiLinks`, and `dbo.Datasets`; numbered scripts in `scripts/database-updates` record applied IDs in `dbo.SchemaMigrations`. Current schema documents and generated dataset bodies live as JSON files under the configured storage root. The API does not apply DDL automatically at startup.
 
-The React client supports schema management, data preview, and API-link management. Swagger is enabled. There is no authentication/authorization. Storage tests cover local JSON read/write behavior; SQL-backed integration tests still need a SQL Server target. JSON import, nested schema generation, and Ollama integration are not implemented.
+The React client supports schema management, data preview, and API-link management. Swagger is enabled. There is no authentication/authorization. Storage tests cover local JSON read/write behavior; SQL-backed integration tests still need a SQL Server target. JSON import and nested schema generation are not implemented.
 
 ## Reusable foundation
 
@@ -51,7 +51,7 @@ The first API-link release treats the existing `Schema` as the user's data defin
 
 Links are public bearer URLs using a high-entropy key. Store a hash of the key and show the full URL only when a link is created or rotated. Because the plaintext key cannot be recovered, asking for a lost URL explicitly rotates the key and invalidates old copies. Links can be revoked and rotated, do not expire by default, and multiple links may reference the same schema. Deleting a schema deletes its links.
 
-`GET /api/v1/data/{publicKey}` returns the saved dataset for the active link and requested count. The first request generates with the existing field generator and persists the result. A bounded count override uses a separate saved dataset. Explicit regeneration creates a new version; expired datasets regenerate on demand. The MVP has no deterministic seed, delay simulation, arbitrary response statuses, custom headers, query-driven generation, or per-request usage log. A public route needs basic rate limiting. Nested generation and AI generation remain separate future work.
+`GET /api/v1/data/{publicKey}` returns the saved dataset for the active link and requested count. A cache miss or schema-version refresh generates with the existing random generator and persists the result. A bounded count override uses a separate saved dataset. Explicit regeneration creates a new version and can opt into AI generation; expired datasets regenerate randomly on demand. The MVP has no deterministic seed, delay simulation, arbitrary response statuses, custom headers, query-driven generation, or per-request usage log. A public route needs basic rate limiting. Nested generation remains separate future work.
 
 ### JSON document storage
 
@@ -65,9 +65,9 @@ These are the product defaults for initial implementation. If product use shows 
 
 Define accepted JSON shapes and validation rules first. Nested objects and arrays require a recursive schema representation, persistence for nested nodes or an equivalent serialized schema format, and generators that preserve the structure. This is a deliberate extension of the current flat `FieldDefinition` model and will require database changes.
 
-### Optional Ollama generation
+### Optional AI generation providers
 
-Keep deterministic generation available independently. The main API should own HTTP handling, schema/link persistence, validation, and provider selection. A narrow generation boundary can accept a schema and generation options and return JSON. The deterministic generator remains the normal provider; an Ollama integration can be added later as an optional component behind that boundary. Configure timeouts and treat connection failures, unavailable service, and provider errors as reasons to fall back to deterministic generation. The core API must start and serve deterministic requests when Ollama is absent.
+Random generation remains available independently. Users opt into AI only when explicitly regenerating a dataset; public GET requests never trigger a hosted-model call. The API owns provider selection through server configuration and calls a small provider interface from its existing service. Google AI Studio is the configured hosted option; Ollama remains an alternative for local/private hosting. Keep API keys in backend secrets, configure request timeouts, validate the flat-schema output, and fall back to the existing random generator on provider failures. AI datasets persist like other generated datasets. Review provider pricing, quotas, and data terms before enabling paid or production use.
 
 ## Phased implementation plan
 
@@ -75,16 +75,16 @@ Keep deterministic generation available independently. The main API should own H
 2. **Add focused automated tests.** Cover schema CRUD and generated output, link creation/key secrecy/rotation/revocation/expiry/count limits, and migration rerun behavior. Use a real SQL Server integration target for persistence checks when available; keep unit tests independent of SQL Server.
 3. **Improve the core based on first-release feedback.** Prioritize data quality, schema/field validation, useful errors, and operational issues that block customers from completing the core workflow. Keep scope tied to observed usage.
 4. **Add nested JSON as an optional product extension.** Define supported object/array shapes, validation, migration, and generation behavior. The JSON storage boundary already accepts nested JSON documents, but current APIs and generators remain flat.
-5. **Consider deterministic generation and optional Ollama.** Add repeatable seeds or AI-backed realistic values only for concrete user needs. Keep the existing generator working independently of Ollama.
+5. **Improve data generation based on usage.** Add repeatable seeds or additional AI providers only for concrete user needs. Keep random generation working independently of AI providers.
 6. **Add authentication and authorization (last planned feature phase).** When flagged, decide user versus project ownership, protect schema and link-management routes, and keep public bearer URLs available for consumers.
 
 ## Explicitly defer
 
-Defer Ollama integration, a standalone generation microservice, nested JSON, account/project ownership and access control (planned as the last feature phase), link expiry by default, deterministic/seeded responses, configurable delays/status/headers, query-driven generation, detailed usage logs, and a larger architectural split. These are optional extensions, not prerequisites for the flat-schema V1 core. Revisit based on concrete usage and deployment needs. Do not introduce CQRS/MediatR, event sourcing, Clean/Onion Architecture, or unnecessary repository abstractions.
+Defer ONNX Runtime optimization, a standalone generation microservice, account/project ownership and access control (planned as the last feature phase), link expiry by default, deterministic/seeded responses, configurable delays/status/headers, query-driven generation, detailed usage logs, and a larger architectural split. These are optional extensions, not prerequisites for the flat-schema V1 core. Revisit based on concrete usage and deployment needs. Do not introduce CQRS/MediatR, event sourcing, Clean/Onion Architecture, or unnecessary repository abstractions.
 
 ## Dependencies and database evolution
 
-The API depends on ASP.NET Core, Dapper, Microsoft.Data.SqlClient, SQL Server, and the built-in JSON/file APIs. The React client uses Vite and npm. Tests use xUnit. Ollama integration would require an HTTP client/configuration and an Ollama service/runtime, but the API must treat it as optional.
+The API depends on ASP.NET Core, Dapper, Microsoft.Data.SqlClient, SQL Server, and the built-in JSON/file APIs. The React client uses Vite and npm. Tests use xUnit. AI providers use the built-in HTTP client factory; provider configuration and credentials stay in the API host.
 
 `dbo.ApiLinks` stores independent link keys and lifecycle. `dbo.Datasets` stores API-link, schema-version, dataset-version, and file-key metadata. Ordered SQL updates are applied with the explicit setup script and recorded in `dbo.SchemaMigrations`. Do not add user/project or usage-log tables until those capabilities are selected. Nested schemas will need a versioned tree/model and API validation, but can use the existing JSON file storage.
 
