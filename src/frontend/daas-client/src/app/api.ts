@@ -23,6 +23,7 @@ export type ApiLink = {
   createdAt: string;
   expiresAt: string | null;
   defaultRecordCount: number;
+  generationMode: number;
 };
 
 export type ApiLinkWithUrl = ApiLink & { url: string };
@@ -65,13 +66,13 @@ export const schemaApi = {
 
 export const apiLinkApi = {
   list: (schemaId: string) => request<ApiLink[]>(`/api/schema/${encodeURIComponent(schemaId)}/links`),
-  create: (schemaId: string, defaultRecordCount: number, expiresAt: string | null) =>
+  create: (schemaId: string, defaultRecordCount: number, expiresAt: string | null, generationMode: number) =>
     request<ApiLinkWithUrl>(`/api/schema/${encodeURIComponent(schemaId)}/links`, {
-      method: 'POST', body: JSON.stringify({ defaultRecordCount, expiresAt }),
+      method: 'POST', body: JSON.stringify({ defaultRecordCount, expiresAt, generationMode }),
     }),
-  update: (schemaId: string, linkId: string, defaultRecordCount: number, expiresAt: string | null) =>
+  update: (schemaId: string, linkId: string, defaultRecordCount: number, expiresAt: string | null, generationMode: number) =>
     request<ApiLink>(`/api/schema/${encodeURIComponent(schemaId)}/links/${encodeURIComponent(linkId)}`, {
-      method: 'PUT', body: JSON.stringify({ defaultRecordCount, expiresAt }),
+      method: 'PUT', body: JSON.stringify({ defaultRecordCount, expiresAt, generationMode }),
     }),
   revoke: (schemaId: string, linkId: string) =>
     request<void>(`/api/schema/${encodeURIComponent(schemaId)}/links/${encodeURIComponent(linkId)}`, { method: 'DELETE' }),

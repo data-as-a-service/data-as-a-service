@@ -47,7 +47,10 @@ public sealed class DatasetService
             if (schema is null) return null;
             var schemaVersion = await _schemaService.GetSchemaVersionAsync(link.SchemaId);
 
-            var generated = _schemaService.GenerateData(schema, recordCount);
+            var generated = link.GenerationMode == 1
+                ? await _schemaService.GenerateDataForLinkAsync(link.SchemaId, recordCount, link.GenerationMode, cancellationToken)
+                : _schemaService.GenerateData(schema, recordCount);
+            if (generated is null) return null;
             var document = JsonSerializer.SerializeToNode(generated)
                 ?? throw new InvalidDataException("Generated data could not be represented as JSON.");
             var storageKey = Guid.NewGuid();

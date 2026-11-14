@@ -49,6 +49,11 @@ builder.Services.AddRateLimiter(options =>
 
 builder.Services.AddSingleton<FieldGeneratorFactory>();
 builder.Services.AddSingleton<Random>();
+builder.Services.AddHttpClient<OllamaDataGenerator>((services, client) =>
+{
+    var seconds = services.GetRequiredService<IConfiguration>().GetValue<int?>("Ollama:TimeoutSeconds") ?? 15;
+    client.Timeout = TimeSpan.FromSeconds(Math.Clamp(seconds, 1, 120));
+});
 builder.Services.AddSingleton<JsonFileStorageService>();
 builder.Services.AddSingleton<SchemaService>();
 builder.Services.AddScoped<ApiLinkService>();
