@@ -1,5 +1,6 @@
 using Daas.Api.Services;
 using Daas.Domain.Entities;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Daas.Api.Controllers;
@@ -64,6 +65,30 @@ public class SchemaController : ControllerBase
             }
 
             return Ok(result);
+        }
+        catch (NotSupportedException exception)
+        {
+            return BadRequest(new { error = exception.Message });
+        }
+    }
+
+    [HttpPost("{id}/data")]
+    [EnableRateLimiting("dataset-regeneration")]
+    public async Task<IActionResult> GenerateDataWithMode(
+        Guid id,
+        [FromQuery] int count,
+        [FromQuery] int generationMode,
+        CancellationToken cancellationToken)
+    {
+        if (count is < 1 or > 1000)
+            return BadRequest(new { error = "Record count must be between 1 and 1000." });
+        if (generationMode is not (0 or 1))
+            return BadRequest(new { error = "Generation mode must be 0 (random) or 1 (AI)." });
+
+        try
+        {
+            var result = await _schemaService.GenerateDataForLinkAsync(id, count, generationMode, cancellationToken);
+            return result is null ? NotFound() : Ok(result);
         }
         catch (NotSupportedException exception)
         {
