@@ -27,9 +27,11 @@ export function App() {
 
   function goGenerate(id = '') { setSchemaId(id); setPage('generate'); }
 
+  const pageLabel = page === 'schemas' ? 'Schemas' : page === 'links' ? 'API links' : 'Generate data';
+
   return <div className="app-shell">
     <aside className="sidebar">
-      <a className="brand" href="#schemas" onClick={event => { event.preventDefault(); setPage('schemas'); }}><span className="brand-mark">d</span><span>DaaS<span className="brand-sub">STUDIO</span></span></a>
+      <a className="brand" href="#schemas" onClick={event => { event.preventDefault(); setPage('schemas'); }} aria-label="DaaS Studio home"><span className="brand-mark">d</span><span>DaaS<span className="brand-sub">DATA STUDIO</span></span></a>
       <div className="nav-label">WORKSPACE</div>
       <nav aria-label="Main navigation">
         <button className={`nav-item ${page === 'schemas' ? 'active' : ''}`} onClick={() => setPage('schemas')}><span className="nav-icon">▦</span>Schemas</button>
@@ -39,8 +41,8 @@ export function App() {
       <div className="sidebar-bottom"><div className="sidebar-help-mark">?</div><div><strong>Need a hand?</strong><span>Explore the API docs</span></div><a href="/swagger" target="_blank" rel="noreferrer" aria-label="Open API documentation">↗</a></div>
     </aside>
     <main className="main-area">
-      <header className="topbar"><div className="breadcrumb">Workspace <span>/</span> <strong>{page === 'schemas' ? 'Schemas' : page === 'links' ? 'API links' : 'Generate data'}</strong></div><div className={`topbar-right api-connection api-connection-${apiStatus}`} role="status" aria-live="polite"><span className="environment-dot" /> {apiStatus === 'checking' ? 'Checking API…' : apiStatus === 'connected' ? 'API connected' : 'API unavailable'}</div></header>
-      <div className="content-area">{page === 'schemas' ? <SchemaListPage onGenerate={goGenerate} /> : page === 'links' ? <ApiLinksPage /> : <GenerateDataPage initialSchemaId={schemaId} onBrowseSchemas={() => setPage('schemas')} />}</div>
+      <header className="topbar"><div className="breadcrumb">Workspace <span>/</span> <strong>{pageLabel}</strong></div><div className={`topbar-right api-connection api-connection-${apiStatus}`} role="status" aria-live="polite"><span className="environment-dot" /> {apiStatus === 'checking' ? 'Checking API…' : apiStatus === 'connected' ? 'API connected' : 'API unavailable'}</div></header>
+      <main className="content-area" id="main-content">{page === 'schemas' ? <SchemaListPage onGenerate={goGenerate} /> : page === 'links' ? <ApiLinksPage /> : <GenerateDataPage initialSchemaId={schemaId} onBrowseSchemas={() => setPage('schemas')} />}</main>
       <footer className="footer"><span>DAAS CONSOLE</span><span>Powered by your schema definitions</span></footer>
     </main>
   </div>;

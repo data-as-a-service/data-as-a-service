@@ -9,6 +9,9 @@ export function ApiLinksPage() {
   const [count, setCount] = useState(10);
   const [expiry, setExpiry] = useState('');
   const [lastUrl, setLastUrl] = useState('');
+  const [editingLinkId, setEditingLinkId] = useState('');
+  const [editCount, setEditCount] = useState(10);
+  const [editExpiry, setEditExpiry] = useState('');
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -44,18 +47,33 @@ export function ApiLinksPage() {
     finally { setBusy(false); }
   }
 
+  function beginEdit(link: ApiLink) {
+    setEditingLinkId(link.id);
+    setEditCount(link.defaultRecordCount);
+    if (link.expiresAt) {
+      const date = new Date(link.expiresAt);
+      setEditExpiry(new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16));
+    } else {
+      setEditExpiry('');
+    }
+    setError('');
+  }
+
   async function update(link: ApiLink) {
-    const nextCount = Number(window.prompt('Default records per request (1–1000)', String(link.defaultRecordCount)));
-    if (!Number.isInteger(nextCount) || nextCount < 1 || nextCount > 1000) return;
-    const expiryDate = window.prompt('Expiry date (YYYY-MM-DD; leave blank for no expiry)', link.expiresAt?.slice(0, 10) ?? '');
-    if (expiryDate === null) return;
-    const nextExpiry = expiryDate.trim() ? new Date(`${expiryDate.trim()}T23:59:59Z`) : null;
-    if (nextExpiry && (Number.isNaN(nextExpiry.getTime()) || nextExpiry.getTime() <= Date.now())) {
-      setError('Expiry must be a future date in YYYY-MM-DD format.');
+    if (!Number.isInteger(editCount) || editCount < 1 || editCount > 1000) {
+      setError('Record count must be between 1 and 1,000.');
       return;
     }
+    const nextExpiry = editExpiry ? new Date(editExpiry) : null;
+    if (nextExpiry && (Number.isNaN(nextExpiry.getTime()) || nextExpiry.getTime() <= Date.now())) {
+      setError('Expiry must be a future date.'); return;
+    }
     setBusy(true); setError('');
-    try { await apiLinkApi.update(schemaId, link.id, nextCount, nextExpiry?.toISOString() ?? null); await refresh(); }
+    try {
+      await apiLinkApi.update(schemaId, link.id, editCount, nextExpiry?.toISOString() ?? null);
+      setEditingLinkId('');
+      await refresh();
+    }
     catch (err) { setError(err instanceof Error ? err.message : 'Could not update link.'); }
     finally { setBusy(false); }
   }
@@ -94,10 +112,10 @@ export function ApiLinksPage() {
 
   return <>
     <div className="page-heading"><div><p className="eyebrow">SHARE YOUR DATA</p><h1>API links</h1><p className="page-description">Create public GET endpoints backed by your schemas.</p></div><span className="count-pill">{links.length} {links.length === 1 ? 'link' : 'links'}</span></div>
+    {error && <ErrorState>{error}</ErrorState>}
     <div className="link-layout">
       <section className="panel create-panel">
         <div className="panel-heading"><div><h2>Create a public link</h2><p>Anyone with the URL can request generated records.</p></div><span className="step-badge">01</span></div>
-        {error && <ErrorState>{error}</ErrorState>}
         {schemas.length === 0 ? <EmptyState>Create a schema before creating an API link.</EmptyState> : <div className="schema-form">
           <label className="input-label" htmlFor="link-schema">Schema</label>
           <select id="link-schema" className="select-input" value={schemaId} onChange={event => setSchemaId(event.target.value)}>{schemas.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select>
@@ -113,12 +131,20 @@ export function ApiLinksPage() {
       </section>
       <section className="panel list-panel">
         <div className="panel-heading"><div><h2>Links for this schema</h2><p>Revoked links can no longer serve data.</p></div></div>
-        {notice && <p className="helper-text" role="status">{notice}</p>}
+        {notice && <div className="notice success-notice" role="status">{notice}</div>}
         {loading ? <LoadingState>Loading links…</LoadingState> : links.length === 0 ? <EmptyState>No API links for this schema yet.</EmptyState> : <div className="schema-list">{links.map(link => {
           const expired = Boolean(link.expiresAt && new Date(link.expiresAt).getTime() <= Date.now());
           return <article className="schema-card" key={link.id}>
           <div className="schema-meta"><h3>{!link.isActive ? 'Revoked link' : expired ? 'Expired link' : 'Active public link'}</h3><span>{link.defaultRecordCount} records · Generator chosen per regeneration · {link.expiresAt ? `Expires ${new Date(link.expiresAt).toLocaleString()}` : 'No expiry'} · Created {new Date(link.createdAt).toLocaleDateString()}</span></div>
-          <div className="schema-actions">{link.isActive && !expired && <><button className="button button-quiet" disabled={busy} onClick={() => void regenerate(link, 0)}>Regenerate · Random</button><button className="button button-quiet" disabled={busy} onClick={() => void regenerate(link, 1)}>Regenerate · AI</button><button className="button button-quiet" disabled={busy} onClick={() => void update(link)}>Settings</button><button className="button button-quiet" disabled={busy} onClick={() => void rotate(link)}>Rotate</button><button className="button button-quiet" disabled={busy} onClick={() => void revoke(link)}>Revoke</button></>}</div>
+          <div className="schema-actions">{link.isActive && !expired && <><button className="button button-quiet" disabled={busy} onClick={() => void regenerate(link, 0)}>Regenerate · Random</button><button className="button button-quiet" disabled={busy} onClick={() => void regenerate(link, 1)}>Regenerate · AI</button><button className="button button-quiet" disabled={busy} onClick={() => editingLinkId === link.id ? setEditingLinkId('') : beginEdit(link)}>Settings</button><button className="button button-quiet" disabled={busy} onClick={() => void rotate(link)}>Rotate</button><button className="button button-quiet" disabled={busy} onClick={() => void revoke(link)}>Revoke</button></>}</div>
+          {editingLinkId === link.id && <div className="link-settings">
+            <div className="link-settings-heading"><strong>Link settings</strong><span>Adjust the default response size or expiration date.</span></div>
+            <div className="link-settings-fields">
+              <label className="input-label" htmlFor={`edit-count-${link.id}`}>Records per request<input id={`edit-count-${link.id}`} className="text-input" type="number" min="1" max="1000" value={editCount} onChange={event => setEditCount(Number(event.target.value))} /></label>
+              <label className="input-label" htmlFor={`edit-expiry-${link.id}`}>Expiry <span className="field-optional">(optional)</span><input id={`edit-expiry-${link.id}`} className="text-input" type="datetime-local" value={editExpiry} onChange={event => setEditExpiry(event.target.value)} /></label>
+            </div>
+            <div className="link-settings-actions"><button className="button button-quiet" disabled={busy} onClick={() => setEditingLinkId('')}>Cancel</button><button className="button button-primary" disabled={busy} onClick={() => void update(link)}>{busy ? 'Saving…' : 'Save settings'}</button></div>
+          </div>}
         </article>})}</div>}
       </section>
     </div>

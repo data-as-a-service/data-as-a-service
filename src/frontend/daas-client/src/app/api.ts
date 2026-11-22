@@ -62,6 +62,11 @@ export const schemaApi = {
   generate: (id: string, count: number) => request<Record<string, unknown>[]>(
     `/api/schema/${encodeURIComponent(id)}/data/${count}`,
   ),
+  generateWithMode: (id: string, count: number, generationMode: 0 | 1) =>
+    request<Record<string, unknown>[]>(
+      `/api/schema/${encodeURIComponent(id)}/data?count=${count}&generationMode=${generationMode}`,
+      { method: 'POST' },
+    ),
 };
 
 export const apiLinkApi = {
