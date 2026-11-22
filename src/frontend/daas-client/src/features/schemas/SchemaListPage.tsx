@@ -12,6 +12,7 @@ export function SchemaListPage({ onGenerate }: Props) {
   const [error, setError] = useState('');
   const [selected, setSelected] = useState<Schema | null>(null);
   const [deleting, setDeleting] = useState('');
+  const [creating, setCreating] = useState(false);
 
   async function refresh() {
     setLoading(true);
@@ -36,58 +37,38 @@ export function SchemaListPage({ onGenerate }: Props) {
   }
 
   return <>
-    <section className="welcome-banner">
-      <div className="welcome-copy">
-        <span className="banner-kicker"><span className="banner-spark">✦</span> YOUR DATA WORKSPACE</span>
-        <h2>Shape data.<br /><em>Build with confidence.</em></h2>
-        <p>Design a schema, generate realistic sample records, and share them through a simple API link.</p>
-        <div className="banner-actions">
-          <button className="button button-light" onClick={() => schemas.length ? onGenerate(schemas[0].id) : document.getElementById('schema-create-panel')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>{schemas.length ? 'Generate a sample' : 'Create your first schema'} <span>→</span></button>
-          <a href="/swagger" target="_blank" rel="noreferrer">Explore API docs <span>↗</span></a>
-        </div>
-        <div className="workflow-hint"><span>01 <b>Define</b></span><i /> <span>02 <b>Generate</b></span><i /> <span>03 <b>Share</b></span></div>
-      </div>
-      <div className="banner-visual" aria-hidden="true">
-        <div className="visual-glow" />
-        <div className="code-window"><div className="code-window-top"><span /><span /><span /><small>customer.json</small></div><pre><span className="json-brace">{'{'}</span>{'\n'}  <span className="json-key">"customer"</span>: <span className="json-brace">{'{'}</span>{'\n'}    <span className="json-key">"name"</span>: <span className="json-value">"Jordan Lee"</span>,{'\n'}    <span className="json-key">"active"</span>: <span className="json-bool">true</span>,{'\n'}    <span className="json-key">"orders"</span>: <span className="json-brace">[</span><span className="json-brace">{'{'}</span>{' … '}<span className="json-brace">{'}'}</span><span className="json-brace">]</span>{'\n'}  <span className="json-brace">{'}'}</span>{'\n'}<span className="json-brace">{'}'}</span></pre><div className="visual-badge"><span>✦</span> Generated preview</div></div>
-      </div>
-      <div className="banner-orb orb-one" /><div className="banner-orb orb-two" />
+    <section className="intro-block">
+      <div className="intro-copy"><p className="eyebrow">A SMALL WORKSPACE FOR SAMPLE DATA</p><h1>Make the data<br />your project needs.</h1><p className="intro-description">Define the shape of a response, generate records that fit it, then share a link your frontend can call.</p></div>
+      <div className="intro-aside"><span className="intro-index">01 <i /> 03</span><p>Start with a schema.<br />The rest follows from it.</p></div>
     </section>
 
-    <div className="page-heading">
-      <div><p className="eyebrow">DATA MODELS</p><h1>Schemas</h1><p className="page-description">Define the fields that shape your generated data.</p></div>
-      <span className="count-pill">{schemas.length} {schemas.length === 1 ? 'schema' : 'schemas'}</span>
-    </div>
+    <section className="workflow-strip" aria-label="How to use Data as a Service">
+      <article className="workflow-step"><span className="workflow-number">01</span><div><h2>Describe</h2><p>Name a schema and add the fields your response needs.</p></div></article>
+      <article className="workflow-step"><span className="workflow-number">02</span><div><h2>Generate</h2><p>Choose a schema and make a batch of sample records.</p></div></article>
+      <article className="workflow-step"><span className="workflow-number">03</span><div><h2>Share</h2><p>Create a public link that serves its saved dataset.</p></div></article>
+    </section>
 
-    <div className="overview-strip">
-      <div className="overview-item"><span className="overview-icon">▦</span><span><strong>{schemas.length}</strong><small>{schemas.length === 1 ? 'Schema ready' : 'Schemas ready'}</small></span></div>
-      <div className="overview-item"><span className="overview-icon violet">≡</span><span><strong>{schemas.reduce((total, schema) => total + schema.fields.length, 0)}</strong><small>Fields defined</small></span></div>
-      <div className="overview-item overview-note"><span className="status-mini" /><span><strong>Ready when you are</strong><small>Your schemas shape every generated response.</small></span></div>
-    </div>
+    <section className="workspace-section" aria-labelledby="schemas-heading">
+      <div className="section-heading"><div><p className="eyebrow">YOUR DEFINITIONS</p><h2 id="schemas-heading">Schemas <span className="section-count tabular-nums">{schemas.length.toLocaleString()}</span></h2><p>Each schema describes the fields in your sample response.</p></div><button className="button button-primary" onClick={() => setCreating(true)}>New schema <span aria-hidden="true">+</span></button></div>
+      {error && <ErrorState>{error}</ErrorState>}
+      {loading ? <div className="workspace-state"><LoadingState>Loading schemas…</LoadingState></div> : schemas.length === 0 ? <div className="workspace-empty"><div className="empty-index">01</div><div><h3>Nothing here yet</h3><p>Create your first schema to define the shape of the data you want to work with.</p><button className="text-action" onClick={() => setCreating(true)}>Create a schema <span aria-hidden="true">→</span></button></div></div> : <div className="schema-table-wrap"><table className="schema-table"><thead><tr><th>NAME</th><th>FIELDS</th><th>USE THIS SCHEMA</th><th aria-label="Actions" /></tr></thead><tbody>{schemas.map(schema => <tr key={schema.id}><td><button className="schema-name-button" onClick={() => setSelected(schema)}>{schema.name}<span>View fields</span></button></td><td className="tabular-nums field-count-cell">{schema.fields.length.toLocaleString()} <span>{schema.fields.length === 1 ? 'field' : 'fields'}</span></td><td><button className="text-action" onClick={() => onGenerate(schema.id)}>Generate records <span aria-hidden="true">→</span></button></td><td><button className="icon-button danger-icon" disabled={deleting === schema.id} onClick={() => void remove(schema)} aria-label={`Delete ${schema.name}`} title="Delete schema">×</button></td></tr>)}</tbody></table></div>}
+      <p className="section-footnote">Schemas are data shapes. They don’t contain your generated records.</p>
+    </section>
 
-    <div className="schema-layout">
-      <section className="panel create-panel" id="schema-create-panel">
-        <div className="panel-heading"><div><h2>Create a schema</h2><p>Start with a name and add the fields you need.</p></div><span className="step-badge">01</span></div>
-        <CreateSchemaForm onCreated={refresh} />
+    {creating && <div className="modal-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setCreating(false); }}>
+      <section className="modal panel" role="dialog" aria-modal="true" aria-labelledby="create-schema-title">
+        <div className="panel-heading"><div><p className="eyebrow">DEFINE YOUR RESPONSE</p><h2 id="create-schema-title">New schema</h2><p>Add a name and at least one field.</p></div><button className="icon-button" onClick={() => setCreating(false)} aria-label="Close">×</button></div>
+        <CreateSchemaForm onCreated={async () => { await refresh(); setCreating(false); }} />
       </section>
-
-      <section className="panel list-panel">
-        <div className="panel-heading"><div><h2>Your schemas</h2><p>Browse and generate data from saved definitions.</p></div><button className="icon-button" onClick={() => void refresh()} aria-label="Refresh schemas" title="Refresh">↻</button></div>
-        {error && <ErrorState>{error}</ErrorState>}
-        {loading ? <LoadingState>Loading schemas…</LoadingState> : schemas.length === 0 ? <EmptyState>No schemas yet. Create your first schema to get started.</EmptyState> :
-          <div className="schema-list">{schemas.map(schema => <article className="schema-card" key={schema.id}>
-            <div className="schema-card-main"><div className="schema-icon">{schema.name.slice(0, 1).toUpperCase() || 'S'}</div><div className="schema-meta"><h3>{schema.name}</h3><span>{schema.fields.length} {schema.fields.length === 1 ? 'field' : 'fields'}</span></div></div>
-            <div className="schema-actions"><button className="button button-quiet" onClick={() => setSelected(schema)}>Details</button><button className="button button-primary" onClick={() => onGenerate(schema.id)}>Generate</button><button className="icon-button danger-icon" disabled={deleting === schema.id} onClick={() => void remove(schema)} aria-label={`Delete ${schema.name}`} title="Delete">{deleting === schema.id ? '…' : '×'}</button></div>
-          </article>)}</div>}
-      </section>
-    </div>
+    </div>}
 
     {selected && <div className="modal-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setSelected(null); }}>
       <section className="modal panel" role="dialog" aria-modal="true" aria-labelledby="schema-details-title">
-        <div className="panel-heading"><div><p className="eyebrow">SCHEMA DETAILS</p><h2 id="schema-details-title">{selected.name}</h2></div><button className="icon-button" onClick={() => setSelected(null)} aria-label="Close details">×</button></div>
-        <p className="id-label">ID <code>{selected.id}</code></p>
-        {selected.fields.length === 0 ? <EmptyState>This schema has no fields.</EmptyState> : <div className="field-table">{selected.fields.map(field => <div className="field-row" key={`${field.id ?? field.fieldName}`}><span>{field.fieldName}</span><span className="type-pill">{fieldTypeName(field.fieldType)}</span></div>)}</div>}
-        <div className="modal-actions"><button className="button button-quiet" onClick={() => setSelected(null)}>Close</button><button className="button button-primary" onClick={() => { onGenerate(selected.id); setSelected(null); }}>Generate data</button></div>
+        <div className="panel-heading"><div><p className="eyebrow">SCHEMA FIELDS</p><h2 id="schema-details-title">{selected.name}</h2><p>{selected.fields.length} {selected.fields.length === 1 ? 'field' : 'fields'} in this definition</p></div><button className="icon-button" onClick={() => setSelected(null)} aria-label="Close details">×</button></div>
+        <div className="field-table" role="table" aria-label={`${selected.name} fields`}><div className="field-table-head" role="row"><span role="columnheader">FIELD</span><span role="columnheader">TYPE</span></div>
+          {selected.fields.length === 0 ? <EmptyState>This schema has no fields yet.</EmptyState> : selected.fields.map(field => <div className="field-row" role="row" key={`${field.id ?? field.fieldName}`}><span role="cell">{field.fieldName}</span><span className="type-pill" role="cell">{fieldTypeName(field.fieldType)}</span></div>)}
+        </div>
+        <div className="modal-actions"><button className="button button-quiet" onClick={() => setSelected(null)}>Close</button><button className="button button-primary" onClick={() => { onGenerate(selected.id); setSelected(null); }}>Generate data <span aria-hidden="true">→</span></button></div>
       </section>
     </div>}
   </>;
