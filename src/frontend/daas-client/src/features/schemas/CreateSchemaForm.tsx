@@ -1,51 +1,48 @@
 import { useState, type FormEvent } from 'react';
-import { schemaApi, type SchemaField } from '../../app/api';
+import { schemaApi } from '../../app/api';
 import { ErrorState } from '../../shared/States';
+import { Icon } from '../../shared/Icon';
 import { GENERATABLE_FIELD_TYPES } from './schemaFieldTypes';
 
-type Props = { onCreated: () => Promise<void> };
-
-export function CreateSchemaForm({ onCreated }: Props) {
+export function CreateSchemaForm({ onCreated }: { onCreated: (id: string, name: string) => Promise<void> }) {
   const [name, setName] = useState('');
-  const [fields, setFields] = useState<Pick<SchemaField, 'fieldName' | 'fieldType'>[]>([{ fieldName: '', fieldType: 0 }]);
+  const [fields, setFields] = useState([{ fieldName: '', fieldType: 0 }]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-
-  function updateField(index: number, change: Partial<Pick<SchemaField, 'fieldName' | 'fieldType'>>) {
-    setFields(current => current.map((field, i) => i === index ? { ...field, ...change } : field));
-  }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    const cleanedName = name.trim();
-    const cleanedFields = fields.map(field => ({ ...field, fieldName: field.fieldName.trim() }));
-    if (!cleanedName || cleanedFields.some(field => !field.fieldName)) {
-      setError('Add a schema name and a name for every field.');
-      return;
+    const cleaned = fields.map(field => ({ ...field, fieldName: field.fieldName.trim() }));
+    if (!name.trim() || cleaned.some(field => !field.fieldName)) {
+      setError('Enter a schema name and a name for each field.'); return;
     }
-    setSaving(true); setError(''); setSuccess('');
+    if (new Set(cleaned.map(field => field.fieldName)).size !== cleaned.length) {
+      setError('Give each field a unique name so every value has its own JSON property.'); return;
+    }
+    setSaving(true); setError('');
     try {
-      const result = await schemaApi.create({ name: cleanedName, fields: cleanedFields });
-      setName(''); setFields([{ fieldName: '', fieldType: 0 }]);
-      void result;
-      setSuccess('Schema saved. It’s ready to generate.');
-      await onCreated();
-    } catch (err) { setError(err instanceof Error ? err.message : 'Could not create schema.'); }
+      const result = await schemaApi.create({ name: name.trim(), fields: cleaned });
+      await onCreated(result.id, name.trim());
+    } catch (err) { setError(err instanceof Error ? err.message : 'Could not save schema.'); }
     finally { setSaving(false); }
   }
 
-  return <form className="schema-form" onSubmit={event => void submit(event)}>
-    {error && <ErrorState>{error}</ErrorState>}{success && <div className="notice success-notice" role="status">{success}</div>}
-    <label className="input-label" htmlFor="schema-name">Schema name</label>
-    <input id="schema-name" className="text-input" value={name} onChange={event => setName(event.target.value)} placeholder="e.g. Customer" maxLength={120} required />
-    <div className="fields-heading"><span className="input-label">Fields</span><span className="muted">{fields.length} added</span></div>
-    <div className="field-editor-list">{fields.map((field, index) => <div className="field-editor" key={index}>
-      <input className="text-input" aria-label={`Field ${index + 1} name`} value={field.fieldName} onChange={event => updateField(index, { fieldName: event.target.value })} placeholder={index === 0 ? 'e.g. name' : `Field ${index + 1} name`} maxLength={120} required />
-      <select className="select-input" aria-label={`Field ${index + 1} type`} value={field.fieldType} onChange={event => updateField(index, { fieldType: Number(event.target.value) })}>{GENERATABLE_FIELD_TYPES.map(type => <option key={type.value} value={type.value}>{type.label}</option>)}</select>
-      <button type="button" className="icon-button remove-field" aria-label={`Remove field ${index + 1}`} disabled={fields.length === 1} onClick={() => setFields(current => current.filter((_, i) => i !== index))}>×</button>
-    </div>)}</div>
-    <button type="button" className="add-field" onClick={() => setFields(current => [...current, { fieldName: '', fieldType: 0 }])}><span>＋</span> Add field</button>
-    <button className="button button-primary create-submit" disabled={saving}>{saving ? 'Creating…' : 'Save schema'} <span aria-hidden="true">→</span></button>
+  return <form onSubmit={event => void submit(event)}>
+    {error && <ErrorState>{error}</ErrorState>}
+    <fieldset className="form-stack" disabled={saving}>
+      <label>Schema name<input autoFocus value={name} onChange={event => setName(event.target.value)} placeholder="e.g. Customer" maxLength={120} required /></label>
+      <div className="fields-heading"><strong>Field definitions</strong><span>{fields.length}</span></div>
+      {fields.map((field, index) => <div className="field-editor" key={index}>
+        <label>Name<input aria-label={'Field ' + (index + 1) + ' name'} placeholder="e.g. customerId" value={field.fieldName} required maxLength={120}
+          onChange={event => setFields(fields.map((item, i) => i === index ? { ...item, fieldName: event.target.value } : item))} /></label>
+        <label>Type<select aria-label={'Field ' + (index + 1) + ' type'} value={field.fieldType}
+          onChange={event => setFields(fields.map((item, i) => i === index ? { ...item, fieldType: Number(event.target.value) } : item))}>
+          {GENERATABLE_FIELD_TYPES.map(type => <option key={type.value} value={type.value}>{type.label}</option>)}</select></label>
+        <button type="button" className="icon-button" disabled={fields.length === 1} aria-label={'Remove field ' + (index + 1)}
+          onClick={() => setFields(fields.filter((_, i) => i !== index))}><Icon name="close" /></button>
+      </div>)}
+      <button type="button" className="button button-quiet" onClick={() => setFields([...fields, { fieldName: '', fieldType: 0 }])}><Icon name="plus" />Add field</button>
+      <button className="button button-primary">{saving ? 'Saving…' : 'Save schema'}</button>
+    </fieldset>
   </form>;
 }

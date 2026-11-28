@@ -42,9 +42,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   }
 
   if (!response.ok) {
-    if (response.status === 404) throw new Error('The requested schema was not found.');
-    const detail = await response.text();
-    throw new Error(detail || `Request failed (${response.status}).`);
+    if (response.status === 404) throw new Error('This schema or link is no longer available.');
+    if (response.status === 429) throw new Error('Too many requests. Wait a moment and try again.');
+    const detail = await response.json().catch(() => null);
+    throw new Error(detail?.error ?? detail?.title ?? `The API returned HTTP ${response.status}. Try again.`);
   }
 
   if (response.status === 204) return undefined as T;
