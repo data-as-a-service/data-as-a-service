@@ -1,51 +1,84 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { schemaApi } from './api';
 import { GenerateDataPage } from '../features/generation/GenerateDataPage';
 import { SchemaListPage } from '../features/schemas/SchemaListPage';
 import { ApiLinksPage } from '../features/links/ApiLinksPage';
+import { Icon } from '../shared/Icon';
+import { Dialog } from '../shared/Dialog';
 
-type Page = 'schemas' | 'generate' | 'links';
-
-const navigation: { id: Page; label: string }[] = [
-  { id: 'schemas', label: 'Schemas' },
-  { id: 'generate', label: 'Generate data' },
+const navigation = [
+  { id: 'schemas', label: 'Schema library' },
+  { id: 'generate', label: 'Data generator' },
   { id: 'links', label: 'API links' },
-];
+] as const;
+
+function readRoute() {
+  const [section, query] = window.location.hash.slice(1).split('?');
+  return {
+    page: navigation.find(item => item.id === section) ?? navigation[0],
+    schemaId: new URLSearchParams(query).get('schema') ?? '',
+  };
+}
 
 export function App() {
-  const [page, setPage] = useState<Page>('schemas');
-  const [schemaId, setSchemaId] = useState('');
-  const [apiStatus, setApiStatus] = useState<'checking' | 'connected' | 'unavailable'>('checking');
+  const [route, setRoute] = useState(readRoute);
+  const [guide, setGuide] = useState(false);
+  const main = useRef<HTMLElement>(null);
+  const [status, setStatus] = useState('Connecting');
+
+  useEffect(() => {
+    const navigate = () => {
+      setRoute(readRoute());
+      main.current?.focus({ preventScroll: true });
+      window.scrollTo(0, 0);
+    };
+    window.addEventListener('hashchange', navigate);
+    return () => window.removeEventListener('hashchange', navigate);
+  }, []);
+
+  useEffect(() => {
+    document.title = route.page.label + ' · DaaS Studio';
+  }, [route.page]);
 
   useEffect(() => {
     let active = true;
-    const checkApi = () => {
-      void schemaApi.list().then(
-        () => { if (active) setApiStatus('connected'); },
-        () => { if (active) setApiStatus('unavailable'); },
-      );
-    };
-    checkApi();
-    const interval = window.setInterval(checkApi, 30_000);
-    return () => { active = false; window.clearInterval(interval); };
+    async function check() {
+      try { await schemaApi.list(); if (active) setStatus('API connected'); }
+      catch { if (active) setStatus('API unavailable'); }
+    }
+    void check();
+    const timer = window.setInterval(check, 30000);
+    return () => { active = false; window.clearInterval(timer); };
   }, []);
 
-  function goGenerate(id = '') { setSchemaId(id); setPage('generate'); }
-
-  return <div className="app-shell">
-    <header className="site-header">
-      <a className="brand" href="#schemas" onClick={event => { event.preventDefault(); setPage('schemas'); }} aria-label="Data as a Service home">
-        <img className="brand-mark" src="/assets/260086583.png" alt="" />
-        <span className="brand-name">data<span>as a service</span></span>
+  return <div className="studio">
+    <button className="skip" onClick={() => main.current?.focus()}>Skip to workspace</button>
+    <aside className="sidebar">
+      <a className="brand" href="#schemas" aria-label="DaaS Studio home">
+        <img src="/assets/260086583.png" alt="" /><span>DaaS <b>Studio</b></span>
       </a>
-      <nav className="top-navigation" aria-label="Main navigation">
-        {navigation.map(item => <button key={item.id} className={`nav-item ${page === item.id ? 'active' : ''}`} aria-current={page === item.id ? 'page' : undefined} onClick={() => item.id === 'generate' ? goGenerate() : setPage(item.id)}>{item.label}</button>)}
-      </nav>
-      <div className={`header-status api-connection-${apiStatus}`} role="status" aria-live="polite"><span className="environment-dot"/><span>{apiStatus === 'checking' ? 'Connecting…' : apiStatus === 'connected' ? 'Connected' : 'API unavailable'}</span></div>
-    </header>
-    <main className="main-area">
-      <div className="content-area" id="main-content">{page === 'schemas' ? <SchemaListPage onGenerate={goGenerate} /> : page === 'links' ? <ApiLinksPage /> : <GenerateDataPage initialSchemaId={schemaId} onBrowseSchemas={() => setPage('schemas')} />}</div>
-      <footer className="footer"><span>DATA AS A SERVICE</span><span>Turn a data shape into sample records or a shareable link.</span></footer>
-    </main>
+      <nav aria-label="Workspace">{navigation.map(item =>
+        <a key={item.id} href={'#' + item.id} aria-current={item.id === route.page.id ? 'page' : undefined}>
+          <Icon name={item.id} />{item.label}
+        </a>)}</nav>
+      <button className="guide" onClick={() => setGuide(true)}><Icon name="guide" />Workspace guide</button>
+    </aside>
+    <div className="canvas">
+      <header className="context-bar"><span>Workspace <i>/</i> <strong>{route.page.label}</strong></span>
+        <span className="connection" role="status" data-state={status}><i />{status}</span>
+      </header>
+      <main ref={main} tabIndex={-1}>
+        {route.page.id === 'schemas' ? <SchemaListPage /> : route.page.id === 'generate'
+          ? <GenerateDataPage key={route.schemaId} initialSchemaId={route.schemaId} />
+          : <ApiLinksPage key={route.schemaId} initialSchemaId={route.schemaId} />}
+      </main>
+    </div>
+    {guide && <Dialog title="Workspace guide" onClose={() => setGuide(false)}>
+      <ol className="guide-list">
+        <li><strong>Define a schema</strong><p>Give your response a name and choose a type for each field.</p></li>
+        <li><strong>Generate a sample</strong><p>Choose random or AI-assisted values, then copy the JSON into your project.</p></li>
+        <li><strong>Share a dataset</strong><p>Create a public API link to serve saved records. Copy the URL when it appears. Rotating it replaces the URL.</p></li>
+      </ol>
+    </Dialog>}
   </div>;
 }
