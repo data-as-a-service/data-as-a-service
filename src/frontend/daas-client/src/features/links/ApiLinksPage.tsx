@@ -1,152 +1,115 @@
 import { useEffect, useState } from 'react';
-import { apiLinkApi, schemaApi, type ApiLink, type ApiLinkWithUrl, type Schema } from '../../app/api';
-import { EmptyState, ErrorState, LoadingState } from '../../shared/States';
+import { apiLinkApi, type ApiLink, type ApiLinkWithUrl } from '../../app/api';
+import { Dialog } from '../../shared/Dialog';
+import { Icon } from '../../shared/Icon';
+import { ErrorState, LoadingState } from '../../shared/States';
+import { useSchemaChoices } from '../schemas/useSchemaChoices';
+import { LinkSettingsForm } from './LinkSettingsForm';
 
-export function ApiLinksPage() {
-  const [schemas, setSchemas] = useState<Schema[]>([]);
-  const [schemaId, setSchemaId] = useState('');
+export function ApiLinksPage({ initialSchemaId }: { initialSchemaId: string }) {
+  const choices = useSchemaChoices(initialSchemaId);
+  return <>
+    <header className="page-heading"><div><h1>API links</h1><p>Publish a saved dataset and manage the URLs that serve it.</p></div></header>
+    {choices.error ? <ErrorState>{choices.error} <button className="text-action" onClick={choices.retry}>Try again</button></ErrorState> :
+      choices.loading ? <LoadingState>Loading schemas…</LoadingState> :
+      !choices.schemaId ? <div className="panel blank"><Icon name="links" /><h2>Create a schema to share data</h2><p>Each public link serves records from one schema.</p><a className="button button-primary" href="#schemas">Open schema library</a></div> :
+      <><label className="schema-picker">Selected schema<select value={choices.schemaId} onChange={event => choices.setSchemaId(event.target.value)}>
+        {choices.schemas.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+        <LinkWorkspace key={choices.schemaId} schemaId={choices.schemaId} /></>}
+  </>;
+}
+
+function LinkWorkspace({ schemaId }: { schemaId: string }) {
   const [links, setLinks] = useState<ApiLink[]>([]);
-  const [count, setCount] = useState(10);
-  const [expiry, setExpiry] = useState('');
-  const [lastUrl, setLastUrl] = useState('');
-  const [editingLinkId, setEditingLinkId] = useState('');
-  const [editCount, setEditCount] = useState(10);
-  const [editExpiry, setEditExpiry] = useState('');
   const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
+  const [loadError, setLoadError] = useState('');
+  const [attempt, setAttempt] = useState(0);
   const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState<ApiLink | null>(null);
+  const [issued, setIssued] = useState<ApiLinkWithUrl | null>(null);
+  const [copied, setCopied] = useState(false);
   const [notice, setNotice] = useState('');
 
   useEffect(() => {
-    schemaApi.list().then(items => {
-      setSchemas(items);
-      setSchemaId(items[0]?.id ?? '');
-    }).catch(err => setError(err instanceof Error ? err.message : 'Could not load schemas.'))
-      .finally(() => setLoading(false));
-  }, []);
+    let active = true;
+    setLoading(true); setLoadError('');
+    apiLinkApi.list(schemaId).then(items => { if (active) setLinks(items); })
+      .catch(err => { if (active) setLoadError(err instanceof Error ? err.message : 'Could not load links.'); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [schemaId, attempt]);
 
-  useEffect(() => {
-    setLastUrl('');
-    if (!schemaId) { setLinks([]); return; }
-    setLoading(true);
-    apiLinkApi.list(schemaId).then(setLinks)
-      .catch(err => setError(err instanceof Error ? err.message : 'Could not load API links.'))
-      .finally(() => setLoading(false));
-  }, [schemaId]);
-
-  async function refresh() {
-    if (schemaId) setLinks(await apiLinkApi.list(schemaId));
-  }
-
-  async function create() {
-    setBusy(true); setError(''); setLastUrl('');
-    try {
-      const created = await apiLinkApi.create(schemaId, count, expiry ? new Date(expiry).toISOString() : null);
-      setLastUrl(created.url); await refresh();
-    } catch (err) { setError(err instanceof Error ? err.message : 'Could not create API link.'); }
-    finally { setBusy(false); }
-  }
-
-  function beginEdit(link: ApiLink) {
-    setEditingLinkId(link.id);
-    setEditCount(link.defaultRecordCount);
-    if (link.expiresAt) {
-      const date = new Date(link.expiresAt);
-      setEditExpiry(new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16));
-    } else {
-      setEditExpiry('');
-    }
-    setError('');
-  }
-
-  async function update(link: ApiLink) {
-    if (!Number.isInteger(editCount) || editCount < 1 || editCount > 1000) {
-      setError('Record count must be between 1 and 1,000.');
-      return;
-    }
-    const nextExpiry = editExpiry ? new Date(editExpiry) : null;
-    if (nextExpiry && (Number.isNaN(nextExpiry.getTime()) || nextExpiry.getTime() <= Date.now())) {
-      setError('Expiry must be a future date.'); return;
-    }
-    setBusy(true); setError('');
-    try {
-      await apiLinkApi.update(schemaId, link.id, editCount, nextExpiry?.toISOString() ?? null);
-      setEditingLinkId('');
-      await refresh();
-    }
-    catch (err) { setError(err instanceof Error ? err.message : 'Could not update link.'); }
-    finally { setBusy(false); }
-  }
-
-  async function regenerate(link: ApiLink, mode: number) {
+  function showUrl(link: ApiLinkWithUrl) { setIssued(link); setCopied(false); }
+  async function save(count: number, expiry: string | null) {
     setBusy(true); setError(''); setNotice('');
     try {
-      const dataset = await apiLinkApi.regenerate(schemaId, link.id, mode);
-      const generator = mode === 1 ? 'AI mode (configured provider with random fallback)' : 'Random mode';
-      setNotice(`Saved ${dataset.length} records using ${generator}. Public GET requests now return this dataset until it is regenerated or invalidated by a schema change.`);
-    } catch (err) { setError(err instanceof Error ? err.message : 'Could not regenerate the saved dataset.'); }
+      if (editing) {
+        await apiLinkApi.update(schemaId, editing.id, count, expiry);
+        setEditing(null); setNotice('Link settings saved.');
+      } else { showUrl(await apiLinkApi.create(schemaId, count, expiry)); }
+      setAttempt(value => value + 1);
+    } finally { setBusy(false); }
+  }
+
+  async function act(link: ApiLink, action: 'rotate' | 'revoke' | 0 | 1) {
+    if (action === 'rotate' && !window.confirm('Replace this URL? Existing copies will stop working.')) return;
+    if (action === 'revoke' && !window.confirm('Revoke this URL? Existing copies will stop working.')) return;
+    setBusy(true); setError(''); setNotice('');
+    try {
+      if (action === 'rotate') showUrl(await apiLinkApi.rotate(schemaId, link.id));
+      else if (action === 'revoke') {
+        await apiLinkApi.revoke(schemaId, link.id);
+        if (issued?.id === link.id) setIssued(null);
+        setNotice('Public link revoked.');
+      } else {
+        const data = await apiLinkApi.regenerate(schemaId, link.id, action);
+        setNotice('Saved ' + data.length + ' new records for link ' + link.id.slice(0, 8) + '.');
+      }
+      setAttempt(value => value + 1);
+    } catch (err) { setError(err instanceof Error ? err.message : 'Could not change the link.'); }
     finally { setBusy(false); }
   }
 
-  async function rotate(link: ApiLink) {
-    setBusy(true); setError(''); setLastUrl('');
-    try { const result: ApiLinkWithUrl = await apiLinkApi.rotate(schemaId, link.id); setLastUrl(result.url); await refresh(); }
-    catch (err) { setError(err instanceof Error ? err.message : 'Could not rotate link.'); }
-    finally { setBusy(false); }
+  async function copy(url: string) {
+    try { await navigator.clipboard.writeText(url); setCopied(true); }
+    catch { setError('Select the URL and copy it manually. Clipboard access is unavailable.'); }
   }
-
-  async function revoke(link: ApiLink) {
-    if (!window.confirm('Revoke this public link? Existing copies will stop working.')) return;
-    setBusy(true); setError('');
-    try { await apiLinkApi.revoke(schemaId, link.id); await refresh(); }
-    catch (err) { setError(err instanceof Error ? err.message : 'Could not revoke link.'); }
-    finally { setBusy(false); }
-  }
-
-  async function copy(text: string) {
-    try { await navigator.clipboard.writeText(text); }
-    catch { setError('Clipboard access was unavailable. Select and copy the URL manually.'); }
-  }
-
-  if (loading && schemas.length === 0) return <LoadingState>Loading schemas…</LoadingState>;
 
   return <>
-    <div className="page-heading"><div><p className="eyebrow">SHARE A DATASET</p><h1>API links</h1><p className="page-description">Give a teammate a public link to request sample records.</p></div><span className="count-pill"><span className="count-value">{links.length.toLocaleString()}</span> {links.length === 1 ? 'link' : 'links'}</span></div>
     {error && <ErrorState>{error}</ErrorState>}
-    <div className="link-layout">
-      <section className="panel create-panel">
-        <div className="panel-heading"><div><p className="eyebrow">SHARE A DATASET</p><h2>Create a public link</h2><p>Anyone with the URL can request this schema’s saved data.</p></div></div>
-        {schemas.length === 0 ? <EmptyState>Create a schema before creating an API link.</EmptyState> : <div className="schema-form">
-          <label className="input-label" htmlFor="link-schema">Schema</label>
-          <select id="link-schema" className="select-input" value={schemaId} onChange={event => setSchemaId(event.target.value)}>{schemas.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select>
-          <label className="input-label link-label" htmlFor="link-count">Default records per request</label>
-          <input id="link-count" className="text-input" type="number" min={1} max={1000} value={count} onChange={event => setCount(Number(event.target.value))} />
-          <label className="input-label link-label" htmlFor="link-expiry">Expiry date <span className="field-optional">(optional)</span></label>
-          <input id="link-expiry" className="text-input" type="datetime-local" value={expiry} onChange={event => setExpiry(event.target.value)} />
-          <p className="helper-text">The URL is shown once. Copy it now; you can rotate it later if you lose it.</p>
-          <p className="helper-text">1–1,000 records. Requests return the saved dataset until you regenerate it.</p>
-          <button className="button button-primary create-submit" disabled={busy || !schemaId || count < 1 || count > 1000} onClick={() => void create()}>{busy ? 'Creating link…' : 'Create public link'} <span aria-hidden="true">→</span></button>
-        </div>}
-        {lastUrl && <div className="link-created"><strong>Copy this URL now</strong><p>The secret is shown only at creation or rotation.</p><code>{lastUrl}</code><button className="button button-quiet" onClick={() => void copy(lastUrl)}>Copy URL</button></div>}
+    {notice && <p className="notice success-notice" role="status">{notice}</p>}
+    {issued && <section className="issued" aria-label="New public URL"><strong role="status">Your public URL is ready</strong>
+      <p>Copy it now. Recovering a lost URL replaces it.</p><div><code>{issued.url}</code>
+        <button className="button button-quiet" onClick={() => void copy(issued.url)}>{copied ? 'Copied' : 'Copy URL'}</button></div></section>}
+    <div className="links-grid">
+      <section className="panel link-registry"><div className="panel-heading"><h2>Published links</h2>{!loading && !loadError && <span className="number-tag">{links.length}</span>}</div>
+        {loadError ? <ErrorState>{loadError} <button className="text-action" onClick={() => setAttempt(value => value + 1)}>Try again</button></ErrorState> :
+          loading ? <LoadingState>Loading links…</LoadingState> : links.length === 0 ?
+            <div className="blank"><Icon name="links" /><h3>No links for this schema</h3><p>Create a link to give your frontend a repeatable JSON response.</p></div> :
+            links.map(link => {
+              const expired = Boolean(link.expiresAt && new Date(link.expiresAt).getTime() <= Date.now());
+              const status = !link.isActive ? 'Revoked' : expired ? 'Expired' : 'Active';
+              return <article key={link.id} className="link-row">
+                <div className="link-identity"><h3>Link <code>{link.id.slice(0, 8)}</code></h3><span className="link-status" data-active={status === 'Active'}>{status}</span></div>
+                <p>{link.defaultRecordCount} records · {link.expiresAt ? 'Expires ' + new Date(link.expiresAt).toLocaleString() : 'No expiry'}</p>
+                <small>Created {new Date(link.createdAt).toLocaleDateString()}</small>
+                {link.isActive && <details><summary>Manage link</summary><div className="link-actions">
+                  {!expired && <><button disabled={busy} onClick={() => void act(link, 0)}>Regenerate random data</button><button disabled={busy} onClick={() => void act(link, 1)}>Regenerate with AI</button></>}
+                  <button disabled={busy} onClick={() => setEditing(link)}>Settings</button>
+                  {!expired && <button disabled={busy} onClick={() => void act(link, 'rotate')}>Rotate URL</button>}
+                  <button className="danger" disabled={busy} onClick={() => void act(link, 'revoke')}>Revoke</button>
+                </div></details>}
+              </article>;
+            })}
       </section>
-      <section className="panel list-panel">
-        <div className="panel-heading"><div><p className="eyebrow">EXISTING LINKS</p><h2>Links for this schema</h2><p>Manage saved data and public access.</p></div></div>
-        {notice && <div className="notice success-notice" role="status">{notice}</div>}
-        {loading ? <LoadingState>Loading links…</LoadingState> : links.length === 0 ? <EmptyState>No API links for this schema yet.</EmptyState> : <div className="schema-list">{links.map(link => {
-          const expired = Boolean(link.expiresAt && new Date(link.expiresAt).getTime() <= Date.now());
-          return <article className="schema-card" key={link.id}>
-          <div className="schema-meta"><h3>{!link.isActive ? 'Revoked link' : expired ? 'Expired link' : 'Active public link'}</h3><span className="tabular-nums">{link.defaultRecordCount} records · {link.expiresAt ? `Expires ${new Date(link.expiresAt).toLocaleString()}` : 'No expiry'} · Created {new Date(link.createdAt).toLocaleDateString()}</span></div>
-          <div className="schema-actions">{link.isActive && !expired && <><button className="button button-quiet" disabled={busy} onClick={() => void regenerate(link, 0)}>Regenerate · Random</button><button className="button button-quiet" disabled={busy} onClick={() => void regenerate(link, 1)}>Regenerate · AI</button><button className="button button-quiet" disabled={busy} onClick={() => editingLinkId === link.id ? setEditingLinkId('') : beginEdit(link)}>Settings</button><button className="button button-quiet" disabled={busy} onClick={() => void rotate(link)}>Rotate URL</button><button className="button button-quiet" disabled={busy} onClick={() => void revoke(link)}>Revoke</button></>}</div>
-          {editingLinkId === link.id && <div className="link-settings">
-            <div className="link-settings-heading"><strong>Link settings</strong><span>Adjust the default response size or expiration date.</span></div>
-            <div className="link-settings-fields">
-              <label className="input-label" htmlFor={`edit-count-${link.id}`}>Records per request<input id={`edit-count-${link.id}`} className="text-input" type="number" min="1" max="1000" value={editCount} onChange={event => setEditCount(Number(event.target.value))} /></label>
-              <label className="input-label" htmlFor={`edit-expiry-${link.id}`}>Expiry <span className="field-optional">(optional)</span><input id={`edit-expiry-${link.id}`} className="text-input" type="datetime-local" value={editExpiry} onChange={event => setEditExpiry(event.target.value)} /></label>
-            </div>
-            <div className="link-settings-actions"><button className="button button-quiet" disabled={busy} onClick={() => setEditingLinkId('')}>Cancel</button><button className="button button-primary" disabled={busy} onClick={() => void update(link)}>{busy ? 'Saving…' : 'Save settings'}</button></div>
-          </div>}
-        </article>})}</div>}
+      <section className="panel"><div className="panel-heading"><h2>New public link</h2><Icon name="links" /></div>
+        <p className="panel-intro">Anyone with the URL can request this dataset.</p>
+        <LinkSettingsForm busy={busy || !!editing} onSave={save} />
       </section>
     </div>
+    {editing && <Dialog title="Link settings" onClose={() => { if (!busy) setEditing(null); }}>
+      <LinkSettingsForm link={editing} busy={busy} onSave={save} />
+    </Dialog>}
   </>;
 }
